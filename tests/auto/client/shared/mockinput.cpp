@@ -32,12 +32,6 @@
 
 namespace Impl {
 
-static Surface *resolveSurface(const QVariant &v)
-{
-    QSharedPointer<MockSurface> mockSurface = v.value<QSharedPointer<MockSurface> >();
-    return mockSurface ? mockSurface->handle() : 0;
-}
-
 void Compositor::setKeyboardFocus(void *data, const QList<QVariant> &parameters)
 {
     Compositor *compositor = static_cast<Compositor *>(data);
@@ -194,6 +188,7 @@ void Compositor::sendDataDeviceLeave(void *data, const QList<QVariant> &paramete
 
 void Compositor::waitForStartDrag(void *data, const QList<QVariant> &parameters)
 {
+    Q_UNUSED(parameters);
     Compositor *compositor = static_cast<Compositor *>(data);
     Q_ASSERT(compositor);
     while (!compositor->m_startDragSeen) {
@@ -239,8 +234,8 @@ void Seat::seat_get_touch(Resource *resource, uint32_t id)
 Keyboard::Keyboard(Compositor *compositor)
     : wl_keyboard()
     , m_compositor(compositor)
-    , m_focusResource(Q_NULLPTR)
-    , m_focus(Q_NULLPTR)
+    , m_focusResource(nullptr)
+    , m_focus(nullptr)
 {
 }
 
@@ -293,8 +288,8 @@ void Keyboard::keyboard_destroy_resource(wl_keyboard::Resource *resource)
 Pointer::Pointer(Compositor *compositor)
     : wl_pointer()
     , m_compositor(compositor)
-    , m_focusResource(Q_NULLPTR)
-    , m_focus(Q_NULLPTR)
+    , m_focusResource(nullptr)
+    , m_focus(nullptr)
 {
 }
 
@@ -447,6 +442,11 @@ DataDevice::~DataDevice()
 
 void DataDevice::data_device_start_drag(QtWaylandServer::wl_data_device::Resource *resource, wl_resource *source, wl_resource *origin, wl_resource *icon, uint32_t serial)
 {
+    Q_UNUSED(resource);
+    Q_UNUSED(source);
+    Q_UNUSED(origin);
+    Q_UNUSED(icon);
+    Q_UNUSED(serial);
     m_compositor->m_startDragSeen = true;
 }
 
@@ -469,6 +469,7 @@ DataDevice *DataDeviceManager::dataDevice() const
 
 void DataDeviceManager::data_device_manager_get_data_device(Resource *resource, uint32_t id, struct ::wl_resource *seat)
 {
+    Q_UNUSED(seat);
     if (!m_data_device)
         m_data_device.reset(new DataDevice(m_compositor));
     m_data_device->add(resource->client(), id, 1);

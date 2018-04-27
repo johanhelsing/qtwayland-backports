@@ -384,7 +384,7 @@ QWaylandQuickItem::~QWaylandQuickItem()
 QWaylandCompositor *QWaylandQuickItem::compositor() const
 {
     Q_D(const QWaylandQuickItem);
-    return d->view->surface() ? d->view->surface()->compositor() : Q_NULLPTR;
+    return d->view->surface() ? d->view->surface()->compositor() : nullptr;
 }
 
 /*!
@@ -587,7 +587,7 @@ void QWaylandQuickItem::hoverLeaveEvent(QHoverEvent *event)
     Q_D(QWaylandQuickItem);
     if (d->shouldSendInputEvents()) {
         QWaylandSeat *seat = compositor()->seatFor(event);
-        seat->setMouseFocus(Q_NULLPTR);
+        seat->setMouseFocus(nullptr);
     } else {
         event->ignore();
     }
@@ -949,9 +949,14 @@ void QWaylandQuickItem::parentChanged(QWaylandSurface *newParent, QWaylandSurfac
 void QWaylandQuickItem::updateSize()
 {
     Q_D(QWaylandQuickItem);
-    if (d->sizeFollowsSurface && surface()) {
-        setSize(surface()->size() * (d->scaleFactor() / surface()->bufferScale()));
-    }
+
+    QSize size(0, 0);
+    if (surface())
+        size = surface()->size() * (d->scaleFactor() / surface()->bufferScale());
+
+    setImplicitSize(size.width(), size.height());
+    if (d->sizeFollowsSurface)
+        setSize(size);
 }
 
 /*!
@@ -1006,7 +1011,13 @@ bool QWaylandQuickItem::inputRegionContains(const QPointF &localPosition)
 QPointF QWaylandQuickItem::mapToSurface(const QPointF &point) const
 {
     Q_D(const QWaylandQuickItem);
-    return point / d->scaleFactor();
+    if (!surface() || surface()->size().isEmpty())
+        return point / d->scaleFactor();
+
+    qreal xScale = width() / surface()->size().width();
+    qreal yScale = height() / surface()->size().height();
+
+    return QPointF(point.x() / xScale, point.y() / yScale);
 }
 
 /*!
@@ -1032,6 +1043,9 @@ bool QWaylandQuickItem::sizeFollowsSurface() const
     return d->sizeFollowsSurface;
 }
 
+//TODO: sizeFollowsSurface became obsolete when we added an implementation for
+//implicit size. The property is here for compatibility reasons only and should
+//be removed or at least default to false in Qt 6.
 void QWaylandQuickItem::setSizeFollowsSurface(bool sizeFollowsSurface)
 {
     Q_D(QWaylandQuickItem);

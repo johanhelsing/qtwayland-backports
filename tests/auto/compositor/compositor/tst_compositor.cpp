@@ -67,6 +67,7 @@ private slots:
     void sizeFollowsWindow();
     void mapSurface();
     void frameCallback();
+    void removeOutput();
 
     void advertisesXdgShellSupport();
     void createsXdgSurfaces();
@@ -201,7 +202,7 @@ void tst_WaylandCompositor::keyboardGrab()
     QTRY_COMPARE(grabKeyReleaseSpy.count(), 2);
 
     // Stop grabbing
-    seat->setKeyboardFocus(Q_NULLPTR);
+    seat->setKeyboardFocus(nullptr);
     seat->sendFullKeyEvent(&ke);
     seat->sendFullKeyEvent(&ke1);
     QTRY_COMPARE(grabKeyPressSpy.count(), 2);
@@ -376,6 +377,22 @@ void tst_WaylandCompositor::frameCallback()
     }
 
     wl_surface_destroy(surface);
+}
+
+void tst_WaylandCompositor::removeOutput()
+{
+    TestCompositor compositor;
+    QWindow window;
+    window.resize(800, 600);
+    auto output = new QWaylandOutput(&compositor, &window);
+
+    compositor.create();
+    MockClient client;
+    QTRY_COMPARE(client.m_outputs.size(), 2);
+
+    delete output;
+    compositor.flushClients();
+    QTRY_COMPARE(client.m_outputs.size(), 1);
 }
 
 void tst_WaylandCompositor::seatCapabilities()

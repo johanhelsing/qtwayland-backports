@@ -58,7 +58,7 @@ QWaylandWlShellSurface::QWaylandWlShellSurface(struct ::wl_shell_surface *shell_
     , m_window(window)
     , m_maximized(false)
     , m_fullscreen(false)
-    , m_extendedWindow(Q_NULLPTR)
+    , m_extendedWindow(nullptr)
 {
     if (window->display()->windowExtension())
         m_extendedWindow = new QWaylandExtendedSurface(window);
@@ -192,7 +192,7 @@ void QWaylandWlShellSurface::updateTransientParent(QWindow *parent)
                   flags);
 }
 
-void QWaylandWlShellSurface::setPopup(QWaylandWindow *parent, QWaylandInputDevice *device, int serial)
+void QWaylandWlShellSurface::setPopup(QWaylandWindow *parent, QWaylandInputDevice *device, uint serial)
 {
     QWaylandWindow *parent_wayland_window = parent;
     if (!parent_wayland_window) {

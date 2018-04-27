@@ -97,7 +97,7 @@ struct ::wl_region *QWaylandDisplay::createRegion(const QRegion &qregion)
 {
     struct ::wl_region *region = mCompositor.create_region();
 
-    Q_FOREACH (const QRect &rect, qregion.rects())
+    for (const QRect &rect : qregion)
         wl_region_add(region, rect.x(), rect.y(), rect.width(), rect.height());
 
     return region;
@@ -136,8 +136,8 @@ QWaylandDisplay::QWaylandDisplay(QWaylandIntegration *waylandIntegration)
     , mLastInputSerial(0)
     , mLastInputDevice(0)
     , mLastInputWindow(0)
-    , mLastKeyboardFocus(Q_NULLPTR)
-    , mSyncCallback(Q_NULLPTR)
+    , mLastKeyboardFocus(nullptr)
+    , mSyncCallback(nullptr)
 {
     qRegisterMetaType<uint32_t>("uint32_t");
 
@@ -157,6 +157,9 @@ QWaylandDisplay::QWaylandDisplay(QWaylandIntegration *waylandIntegration)
 
 QWaylandDisplay::~QWaylandDisplay(void)
 {
+    if (mSyncCallback)
+        wl_callback_destroy(mSyncCallback);
+
     qDeleteAll(mInputDevices);
     mInputDevices.clear();
 
@@ -343,6 +346,15 @@ sync_callback(void *data, struct wl_callback *callback, uint32_t serial)
     bool *done = static_cast<bool *>(data);
 
     *done = true;
+
+    // If the wl_callback done event is received after the condition check in the while loop in
+    // forceRoundTrip(), but before the call to processEvents, the call to processEvents may block
+    // forever if no more events are posted (eventhough the callback is handled in response to the
+    // aboutToBlock signal). Hence, we wake up the event dispatcher so forceRoundTrip may return.
+    // (QTBUG-64696)
+    if (auto *dispatcher = QThread::currentThread()->eventDispatcher())
+        dispatcher->wakeUp();
+
     wl_callback_destroy(callback);
 }
 
@@ -446,7 +458,7 @@ void QWaylandDisplay::handleWaylandSync()
     // This callback is used to set the window activation because we may get an activate/deactivate
     // pair, and the latter one would be lost in the QWindowSystemInterface queue, if we issue the
     // handleWindowActivated() calls immediately.
-    QWindow *activeWindow = mActiveWindows.empty() ? Q_NULLPTR : mActiveWindows.last()->window();
+    QWindow *activeWindow = mActiveWindows.empty() ? nullptr : mActiveWindows.last()->window();
     if (activeWindow != QGuiApplication::focusWindow())
         QWindowSystemInterface::handleWindowActivated(activeWindow);
 }
@@ -456,7 +468,7 @@ const wl_callback_listener QWaylandDisplay::syncCallbackListener = {
         Q_UNUSED(time);
         wl_callback_destroy(callback);
         QWaylandDisplay *display = static_cast<QWaylandDisplay *>(data);
-        display->mSyncCallback = Q_NULLPTR;
+        display->mSyncCallback = nullptr;
         display->handleWaylandSync();
     }
 };

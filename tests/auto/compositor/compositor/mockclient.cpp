@@ -41,13 +41,13 @@
 #include <sys/mman.h>
 
 const struct wl_registry_listener MockClient::registryListener = {
-    MockClient::handleGlobal
+    MockClient::handleGlobal,
+    MockClient::handleGlobalRemove
 };
 
 MockClient::MockClient()
     : display(wl_display_connect("wayland-qt-test-0"))
     , compositor(0)
-    , output(0)
     , registry(0)
     , wlshell(0)
     , xdgShell(nullptr)
@@ -74,9 +74,9 @@ MockClient::MockClient()
     timeout.start();
     do {
         QCoreApplication::processEvents();
-    } while (!(compositor && output) && timeout.elapsed() < 1000);
+    } while (!(compositor && !m_outputs.isEmpty()) && timeout.elapsed() < 1000);
 
-    if (!compositor || !output)
+    if (!compositor || m_outputs.empty())
         qFatal("MockClient(): failed to receive globals from display");
 }
 
@@ -165,12 +165,19 @@ void MockClient::handleGlobal(void *data, wl_registry *registry, uint32_t id, co
     resolve(data)->handleGlobal(id, QByteArray(interface));
 }
 
+void MockClient::handleGlobalRemove(void *data, wl_registry *wl_registry, uint32_t id)
+{
+    Q_UNUSED(wl_registry);
+    resolve(data)->handleGlobalRemove(id);
+}
+
 void MockClient::handleGlobal(uint32_t id, const QByteArray &interface)
 {
     if (interface == "wl_compositor") {
         compositor = static_cast<wl_compositor *>(wl_registry_bind(registry, id, &wl_compositor_interface, 1));
     } else if (interface == "wl_output") {
-        output = static_cast<wl_output *>(wl_registry_bind(registry, id, &wl_output_interface, 2));
+        auto output = static_cast<wl_output *>(wl_registry_bind(registry, id, &wl_output_interface, 2));
+        m_outputs.insert(id, output);
         wl_output_add_listener(output, &outputListener, this);
     } else if (interface == "wl_shm") {
         shm = static_cast<wl_shm *>(wl_registry_bind(registry, id, &wl_shm_interface, 1));
@@ -184,6 +191,11 @@ void MockClient::handleGlobal(uint32_t id, const QByteArray &interface)
         wl_seat *s = static_cast<wl_seat *>(wl_registry_bind(registry, id, &wl_seat_interface, 1));
         m_seats << new MockSeat(s);
     }
+}
+
+void MockClient::handleGlobalRemove(uint32_t id)
+{
+    m_outputs.remove(id);
 }
 
 wl_surface *MockClient::createSurface()
@@ -248,7 +260,7 @@ ShmBuffer::ShmBuffer(const QSize &size, wl_shm *shm)
 
 ShmBuffer::~ShmBuffer()
 {
-    munmap(image.bits(), image.byteCount());
+    munmap(image.bits(), image.sizeInBytes());
     wl_buffer_destroy(handle);
     wl_shm_pool_destroy(shm_pool);
 }

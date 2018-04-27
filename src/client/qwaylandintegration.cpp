@@ -122,7 +122,7 @@ public:
 
 QWaylandIntegration::QWaylandIntegration()
     : mClientBufferIntegration(0)
-    , mInputDeviceIntegration(Q_NULLPTR)
+    , mInputDeviceIntegration(nullptr)
     , mFontDb(new QGenericUnixFontDatabase())
     , mNativeInterface(new QWaylandNativeInterface(this))
 #if QT_CONFIG(accessibility)
@@ -397,7 +397,7 @@ void QWaylandIntegration::initializeShellIntegration()
                           "please specify the shell using QT_WAYLAND_SHELL_INTEGRATION instead";
             preferredShells << QLatin1String("xdg-shell-v5");
         }
-        preferredShells << QLatin1String("wl-shell");
+        preferredShells << QLatin1String("wl-shell") << QLatin1String("ivi-shell");
     }
 
     Q_FOREACH (QString preferredShell, preferredShells) {

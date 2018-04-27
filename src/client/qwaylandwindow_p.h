@@ -110,6 +110,7 @@ public:
     ~QWaylandWindow();
 
     virtual WindowType windowType() const = 0;
+    virtual void ensureSize();
     WId winId() const override;
     void setVisible(bool visible) override;
     void setParent(const QPlatformWindow *parent) override;
@@ -142,7 +143,7 @@ public:
     QWaylandDisplay *display() const { return mDisplay; }
     QWaylandShellSurface *shellSurface() const;
     QWaylandSubSurface *subSurfaceWindow() const;
-    QWaylandScreen *screen() const;
+    QWaylandScreen *waylandScreen() const;
 
     void handleContentOrientationChange(Qt::ScreenOrientation orientation) override;
     void setOrientationMask(Qt::ScreenOrientations mask);
@@ -263,6 +264,7 @@ private:
     QWaylandScreen *calculateScreenFromSurfaceEvents() const;
 
     void handleMouseEventWithDecoration(QWaylandInputDevice *inputDevice, const QWaylandPointerEvent &e);
+    void handleScreenChanged();
 
     bool mUpdateRequested;
 
@@ -285,8 +287,8 @@ inline QPoint QWaylandWindow::attachOffset() const
     return mOffset;
 }
 
-QT_END_NAMESPACE
-
 }
+
+QT_END_NAMESPACE
 
 #endif // QWAYLANDWINDOW_H

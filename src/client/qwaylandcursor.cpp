@@ -92,7 +92,7 @@ struct wl_cursor_image *QWaylandCursor::cursorImage(Qt::CursorShape newShape)
         waylandCursor = requestCursor((WaylandCursor)newShape);
     } else if (newShape == Qt::BitmapCursor) {
         // cannot create a wl_cursor_image for a CursorShape
-        return Q_NULLPTR;
+        return nullptr;
     } else {
         //TODO: Custom cursor logic (for resize arrows)
     }
@@ -119,7 +119,7 @@ QSharedPointer<QWaylandBuffer> QWaylandCursor::cursorBitmapImage(const QCursor *
 
     const QImage &img = cursor->pixmap().toImage();
     QSharedPointer<QWaylandShmBuffer> buffer(new QWaylandShmBuffer(mDisplay, img.size(), img.format()));
-    memcpy(buffer->image()->bits(), img.bits(), img.byteCount());
+    memcpy(buffer->image()->bits(), img.bits(), img.sizeInBytes());
     return buffer;
 }
 

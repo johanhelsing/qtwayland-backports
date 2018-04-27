@@ -125,7 +125,7 @@ QWaylandShmBuffer::~QWaylandShmBuffer(void)
 {
     delete mMarginsImage;
     if (mImage.constBits())
-        munmap((void *) mImage.constBits(), mImage.byteCount());
+        munmap((void *) mImage.constBits(), mImage.sizeInBytes());
     if (mShmPool)
         wl_shm_pool_destroy(mShmPool);
 }
@@ -171,7 +171,7 @@ QWaylandShmBackingStore::QWaylandShmBackingStore(QWindow *window)
 QWaylandShmBackingStore::~QWaylandShmBackingStore()
 {
     if (QWaylandWindow *w = waylandWindow())
-        w->setBackingStore(Q_NULLPTR);
+        w->setBackingStore(nullptr);
 
 //    if (mFrontBuffer == waylandWindow()->attached())
 //        waylandWindow()->attach(0);
@@ -287,10 +287,10 @@ void QWaylandShmBackingStore::resize(const QSize &size)
         buffer = getBuffer(sizeWithMargins);
     }
 
-    int oldSize = mBackBuffer ? mBackBuffer->image()->byteCount() : 0;
+    qsizetype oldSize = mBackBuffer ? mBackBuffer->image()->sizeInBytes() : 0;
     // mBackBuffer may have been deleted here but if so it means its size was different so we wouldn't copy it anyway
-    if (mBackBuffer != buffer && oldSize == buffer->image()->byteCount()) {
-        memcpy(buffer->image()->bits(), mBackBuffer->image()->constBits(), buffer->image()->byteCount());
+    if (mBackBuffer != buffer && oldSize == buffer->image()->sizeInBytes()) {
+        memcpy(buffer->image()->bits(), mBackBuffer->image()->constBits(), buffer->image()->sizeInBytes());
     }
     mBackBuffer = buffer;
     // ensure the new buffer is at the beginning of the list so next time getBuffer() will pick

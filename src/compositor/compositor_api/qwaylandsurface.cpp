@@ -49,7 +49,6 @@
 #include "wayland_wrapper/qwldatadevicemanager_p.h"
 #endif
 
-#include "extensions/qwlextendedsurface_p.h"
 #include "qwaylandinputmethodcontrol_p.h"
 
 #include <QtWaylandCompositor/QWaylandCompositor>
@@ -127,9 +126,9 @@ QList<QWaylandSurfacePrivate *> QWaylandSurfacePrivate::uninitializedSurfaces;
 
 QWaylandSurfacePrivate::QWaylandSurfacePrivate()
     : QtWaylandServer::wl_surface()
-    , compositor(Q_NULLPTR)
+    , compositor(nullptr)
     , refCount(1)
-    , client(Q_NULLPTR)
+    , client(nullptr)
     , role(0)
     , inputRegion(infiniteRegion())
     , bufferScale(1)
@@ -139,7 +138,7 @@ QWaylandSurfacePrivate::QWaylandSurfacePrivate()
     , isInitialized(false)
     , contentOrientation(Qt::PrimaryOrientation)
 #if QT_CONFIG(im)
-    , inputMethodControl(Q_NULLPTR)
+    , inputMethodControl(nullptr)
 #endif
     , subsurface(0)
 {
@@ -459,7 +458,7 @@ QWaylandClient *QWaylandSurface::client() const
 {
     Q_D(const QWaylandSurface);
     if (isDestroyed() || !compositor() || !compositor()->clients().contains(d->client))
-        return Q_NULLPTR;
+        return nullptr;
 
     return d->client;
 }
@@ -603,7 +602,7 @@ void QWaylandSurface::sendFrameCallbacks()
     int i = 0;
     while (i < d->frameCallbacks.size()) {
         if (d->frameCallbacks.at(i)->canSend) {
-            d->frameCallbacks.at(i)->surface = Q_NULLPTR;
+            d->frameCallbacks.at(i)->surface = nullptr;
             d->frameCallbacks.at(i)->send(time);
             d->frameCallbacks.removeAt(i);
         } else {
@@ -716,7 +715,7 @@ QWaylandView *QWaylandSurface::primaryView() const
 {
     Q_D(const QWaylandSurface);
     if (d->views.isEmpty())
-        return Q_NULLPTR;
+        return nullptr;
     return d->views.first();
 }
 
@@ -808,7 +807,7 @@ QWaylandSurfaceRole *QWaylandSurface::role() const
 
 QWaylandSurfacePrivate *QWaylandSurfacePrivate::get(QWaylandSurface *surface)
 {
-    return surface ? surface->d_func() : Q_NULLPTR;
+    return surface ? surface->d_func() : nullptr;
 }
 
 void QWaylandSurfacePrivate::ref()
