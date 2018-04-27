@@ -140,8 +140,7 @@ static const struct {
 };
 
 QWaylandBufferMaterialShader::QWaylandBufferMaterialShader(QWaylandBufferRef::BufferFormatEgl format)
-    : QSGMaterialShader()
-    , m_format(format)
+    : m_format(format)
 {
     setShaderSourceFile(QOpenGLShader::Vertex, QString::fromLatin1(bufferTypes[format].vertexShaderSourceFile));
     setShaderSourceFile(QOpenGLShader::Fragment, QString::fromLatin1(bufferTypes[format].fragmentShaderSourceFile));
@@ -163,7 +162,7 @@ void QWaylandBufferMaterialShader::updateState(const QSGMaterialShader::RenderSt
 
 const char * const *QWaylandBufferMaterialShader::attributeNames() const
 {
-    static char const *const attr[] = { "qt_VertexPosition", "qt_VertexTexCoord", 0 };
+    static char const *const attr[] = { "qt_VertexPosition", "qt_VertexTexCoord", nullptr };
     return attr;
 }
 
@@ -183,8 +182,7 @@ void QWaylandBufferMaterialShader::initialize()
 }
 
 QWaylandBufferMaterial::QWaylandBufferMaterial(QWaylandBufferRef::BufferFormatEgl format)
-    : QSGMaterial()
-    , m_format(format)
+    : m_format(format)
 {
     QOpenGLFunctions *gl = QOpenGLContext::currentContext()->functions();
 
@@ -261,18 +259,16 @@ void QWaylandBufferMaterial::ensureTextures(int count)
     }
 }
 
-QMutex *QWaylandQuickItemPrivate::mutex = 0;
+QMutex *QWaylandQuickItemPrivate::mutex = nullptr;
 
 class QWaylandSurfaceTextureProvider : public QSGTextureProvider
 {
 public:
     QWaylandSurfaceTextureProvider()
-        : m_smooth(false)
-        , m_sgTex(0)
     {
     }
 
-    ~QWaylandSurfaceTextureProvider()
+    ~QWaylandSurfaceTextureProvider() override
     {
         if (m_sgTex)
             m_sgTex->deleteLater();
@@ -283,7 +279,7 @@ public:
         Q_ASSERT(QThread::currentThread() == thread());
         m_ref = buffer;
         delete m_sgTex;
-        m_sgTex = 0;
+        m_sgTex = nullptr;
         if (m_ref.hasBuffer()) {
             if (buffer.isSharedMemory()) {
                 m_sgTex = surfaceItem->window()->createTextureFromImage(buffer.image());
@@ -313,8 +309,8 @@ public:
 
     void setSmooth(bool smooth) { m_smooth = smooth; }
 private:
-    bool m_smooth;
-    QSGTexture *m_sgTex;
+    bool m_smooth = false;
+    QSGTexture *m_sgTex = nullptr;
     QWaylandBufferRef m_ref;
 };
 
@@ -622,7 +618,10 @@ void QWaylandQuickItem::keyPressEvent(QKeyEvent *event)
     Q_D(QWaylandQuickItem);
     if (d->shouldSendInputEvents()) {
         QWaylandSeat *seat = compositor()->seatFor(event);
-        seat->sendFullKeyEvent(event);
+        if (seat->setKeyboardFocus(d->view->surface()))
+            seat->sendFullKeyEvent(event);
+        else
+            qWarning() << "Unable to set keyboard focus, cannot send key press event";
     } else {
         event->ignore();
     }
@@ -1313,6 +1312,19 @@ void QWaylandQuickItem::raise()
     QQuickItem *top = parent->childItems().last();
     if (this != top)
         stackAfter(top);
+}
+
+void QWaylandQuickItem::sendMouseMoveEvent(const QPointF &position, QWaylandSeat *seat)
+{
+    if (seat == nullptr)
+        seat = compositor()->defaultSeat();
+
+    if (!seat) {
+        qWarning() << "No seat, can't send mouse event";
+        return;
+    }
+
+    seat->sendMouseMoveEvent(view(), position);
 }
 
 /*!

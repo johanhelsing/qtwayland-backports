@@ -54,8 +54,6 @@
 QT_BEGIN_NAMESPACE
 
 QWaylandXdgShellV6Private::QWaylandXdgShellV6Private()
-    : QWaylandCompositorExtensionPrivate()
-    , zxdg_shell_v6()
 {
 }
 
@@ -234,15 +232,15 @@ QByteArray QWaylandXdgShellV6::interfaceName()
 }
 
 /*!
- * \qmlmethod void QtWaylandCompositor::XdgShellV6::ping()
+ * \qmlmethod void QtWaylandCompositor::XdgShellV6::ping(WaylandClient client)
  *
- * Sends a ping event to the client. If the client replies to the event the
- * \a pong signal will be emitted.
+ * Sends a ping event to \a client. If the client replies to the event the
+ * \l pong signal will be emitted.
  */
 
 /*!
- * Sends a ping event to the client. If the client replies to the event the
- * \a pong signal will be emitted.
+ * Sends a ping event to \a client. If the client replies to the event the
+ * \l pong signal will be emitted.
  */
 uint QWaylandXdgShellV6::ping(QWaylandClient *client)
 {
@@ -288,14 +286,6 @@ void QWaylandXdgShellV6::handleFocusChanged(QWaylandSurface *newSurface, QWaylan
 }
 
 QWaylandXdgSurfaceV6Private::QWaylandXdgSurfaceV6Private()
-    : QWaylandCompositorExtensionPrivate()
-    , zxdg_surface_v6()
-    , m_xdgShell(nullptr)
-    , m_surface(nullptr)
-    , m_toplevel(nullptr)
-    , m_popup(nullptr)
-    , m_unsetWindowGeometry(true)
-    , m_windowType(Qt::WindowType::Window)
 {
 }
 
@@ -537,12 +527,6 @@ void QWaylandXdgSurfaceV6::initialize(QWaylandXdgShellV6 *xdgShell, QWaylandSurf
  *
  * This property holds the window type of the XdgSurfaceV6.
  */
-
-/*!
- * \property QWaylandXdgSurfaceV6::windowType
- *
- * This property holds the window type of the QWaylandXdgSurfaceV6.
- */
 Qt::WindowType QWaylandXdgSurfaceV6::windowType() const
 {
     Q_D(const QWaylandXdgSurfaceV6);
@@ -614,7 +598,7 @@ QWaylandXdgShellV6 *QWaylandXdgSurfaceV6::shell() const
 /*!
  * \qmlproperty WaylandSurface QtWaylandCompositor::XdgSurfaceV6::surface
  *
- * This property holds the surface associated with this XdgSurface.
+ * This property holds the surface associated with this XdgSurfaceV6.
  */
 
 /*!
@@ -628,12 +612,46 @@ QWaylandSurface *QWaylandXdgSurfaceV6::surface() const
     return d->m_surface;
 }
 
+/*!
+ * \qmlproperty WaylandSurface QtWaylandCompositor::XdgSurfaceV6::toplevel
+ *
+ * This property holds the properties and methods that are specific to the
+ * toplevel XdgSurfaceV6.
+ *
+ * \sa popup, XdgShellV6::toplevelCreated
+ */
+
+/*!
+ * \property QWaylandXdgSurfaceV6::toplevel
+ *
+ * This property holds the properties and methods that are specific to the
+ * toplevel QWaylandXdgSurfaceV6.
+ *
+ * \sa QWaylandXdgSurfaceV6::popup, QWaylandXdgShellV6::toplevelCreated
+ */
 QWaylandXdgToplevelV6 *QWaylandXdgSurfaceV6::toplevel() const
 {
     Q_D(const QWaylandXdgSurfaceV6);
     return d->m_toplevel;
 }
 
+/*!
+ * \qmlproperty WaylandSurface QtWaylandCompositor::XdgSurfaceV6::popup
+ *
+ * This property holds the properties and methods that are specific to the
+ * popup XdgSurfaceV6.
+ *
+ * \sa toplevel, XdgShellV6::popupCreated
+ */
+
+/*!
+ * \property QWaylandXdgSurfaceV6::popup
+ *
+ * This property holds the properties and methods that are specific to the
+ * popup QWaylandXdgSurfaceV6.
+ *
+ * \sa QWaylandXdgSurfaceV6::toplevel, QWaylandXdgShellV6::popupCreated
+ */
 QWaylandXdgPopupV6 *QWaylandXdgSurfaceV6::popup() const
 {
     Q_D(const QWaylandXdgSurfaceV6);
@@ -689,7 +707,7 @@ QWaylandQuickShellIntegration *QWaylandXdgSurfaceV6::createIntegration(QWaylandQ
  * \brief XdgToplevelV6 represents the toplevel window specific parts of an xdg surface
  *
  * This type is part of the \l{XdgShellV6} extension and provides a way to
- * extend the functionality of an QWaylandXdgSurfaceV6 with features
+ * extend the functionality of an XdgSurfaceV6 with features
  * specific to desktop-style windows.
  *
  * It corresponds to the Wayland interface \c zxdg_toplevel_v6.
@@ -709,7 +727,7 @@ QWaylandQuickShellIntegration *QWaylandXdgSurfaceV6::createIntegration(QWaylandQ
  */
 
 /*!
- * Constructs a QWaylandXdgToplevelV6.
+ * Constructs a QWaylandXdgToplevelV6 for the given \a xdgSurface and \a resource.
  */
 QWaylandXdgToplevelV6::QWaylandXdgToplevelV6(QWaylandXdgSurfaceV6 *xdgSurface, QWaylandResource &resource)
     : QObject(*new QWaylandXdgToplevelV6Private(xdgSurface, resource))
@@ -725,7 +743,7 @@ QWaylandXdgToplevelV6::QWaylandXdgToplevelV6(QWaylandXdgSurfaceV6 *xdgSurface, Q
  */
 
 /*!
- * \property QWaylandXdgSurfaceV6::parentToplevel
+ * \property QWaylandXdgToplevelV6::parentToplevel
  *
  * This property holds the XdgToplevelV6 parent of this XdgToplevelV6.
  *
@@ -916,7 +934,9 @@ QSize QWaylandXdgToplevelV6::sizeForResize(const QSizeF &size, const QPointF &de
     else if (edges & Qt::BottomEdge)
         height += delta.y();
 
-    return QSizeF(width, height).toSize();
+    //TODO: use minSize given by the client here instead
+    QSizeF newSize(qMax(width, 1.0), qMax(height, 1.0));
+    return newSize.toSize();
 }
 
 /*!
@@ -926,6 +946,10 @@ QSize QWaylandXdgToplevelV6::sizeForResize(const QSizeF &size, const QPointF &de
  */
 uint QWaylandXdgToplevelV6::sendConfigure(const QSize &size, const QVector<QWaylandXdgToplevelV6::State> &states)
 {
+    if (!size.isValid()) {
+        qWarning() << "Can't configure zxdg_toplevel_v6 with an invalid size" << size;
+        return 0;
+    }
     Q_D(QWaylandXdgToplevelV6);
     auto statesBytes = QByteArray::fromRawData(reinterpret_cast<const char *>(states.data()),
                                                states.size() * static_cast<int>(sizeof(State)));
@@ -967,15 +991,19 @@ void QWaylandXdgToplevelV6::sendClose()
 }
 
 /*!
- * \qmlmethod void QtWaylandCompositor::XdgToplevelV6::sendMaximized()
+ * \qmlmethod void QtWaylandCompositor::XdgToplevelV6::sendMaximized(size size)
  *
  * Convenience for sending a configure event with the maximized state set, and
  * fullscreen and resizing removed. The activated state is left in its current state.
+ *
+ * \a size is the new size of the window.
  */
 
 /*!
  * Convenience for sending a configure event with the maximized state set, and
  * fullscreen and resizing removed. The activated state is left in its current state.
+ *
+ * \a size is the new size of the window.
  */
 uint QWaylandXdgToplevelV6::sendMaximized(const QSize &size)
 {
@@ -991,7 +1019,7 @@ uint QWaylandXdgToplevelV6::sendMaximized(const QSize &size)
 }
 
 /*!
- * \qmlmethod void QtWaylandCompositor::XdgToplevelV6::sendUnmaximized()
+ * \qmlmethod void QtWaylandCompositor::XdgToplevelV6::sendUnmaximized(size size)
  *
  * Convenience for sending a configure event with the maximized, fullscreen and
  * resizing states removed, and fullscreen and resizing removed. The activated
@@ -1021,7 +1049,7 @@ uint QWaylandXdgToplevelV6::sendUnmaximized(const QSize &size)
 }
 
 /*!
- * \qmlmethod void QtWaylandCompositor::XdgToplevelV6::sendFullscreen()
+ * \qmlmethod void QtWaylandCompositor::XdgToplevelV6::sendFullscreen(size size)
  *
  * Convenience for sending a configure event with the fullscreen state set, and
  * maximized and resizing removed. The activated state is left in its current state.
@@ -1049,19 +1077,19 @@ uint QWaylandXdgToplevelV6::sendFullscreen(const QSize &size)
 }
 
 /*!
- * \qmlmethod void QtWaylandCompositor::XdgToplevelV6::sendResizing()
+ * \qmlmethod void QtWaylandCompositor::XdgToplevelV6::sendResizing(size maxSize)
  *
  * Convenience for sending a configure event with the resizing state set, and
  * maximized and fullscreen removed. The activated state is left in its current state.
  *
- * \a size is the new size of the window.
+ * \a maxSize is the new size of the window.
  */
 
 /*!
  * Convenience for sending a configure event with the resizing state set, and
  * maximized and fullscreen removed. The activated state is left in its current state.
  *
- * \a size is the new size of the window.
+ * \a maxSize is the new size of the window.
  */
 uint QWaylandXdgToplevelV6::sendResizing(const QSize &maxSize)
 {
@@ -1084,6 +1112,83 @@ QWaylandSurfaceRole *QWaylandXdgToplevelV6::role()
     return &QWaylandXdgToplevelV6Private::s_role;
 }
 
+
+/*!
+ * \qmlsignal QtWaylandCompositor::XdgShellV6::xdgSurfaceCreated(XdgSurfaceV6 xdgSurface)
+ *
+ * This signal is emitted when the client has created a \c zxdg_surface_v6.
+ * Note that \a xdgSurface is not mapped, i.e. according to the \c xdg-shell
+ * protocol it should not be displayed, until it has received a role object.
+ *
+ * \sa toplevelCreated(), popupCreated()
+ */
+
+/*!
+ * \fn void QWaylandXdgShellV6::xdgSurfaceCreated(QWaylandXdgSurfaceV6 *xdgSurface)
+ *
+ * This signal is emitted when the client has created a \c zxdg_surface_v6.
+ * Note that \a xdgSurface is not mapped, i.e. according to the \c xdg-shell
+ * protocol it should not be displayed, until it has received a role object.
+ *
+ * \sa toplevelCreated(), popupCreated()
+ */
+
+/*!
+ * \qmlsignal QtWaylandCompositor::XdgShellV6::toplevelCreated(XdgToplevelV6 toplevel, XdgSurfaceV6 xdgSurface)
+ *
+ * This signal is emitted when the client has created a \c zxdg_toplevel_v6.
+ * A common use case is to let the handler of this signal instantiate a ShellSurfaceItem or
+ * WaylandQuickItem for displaying \a toplevel in a QtQuick scene.
+ *
+ * \a xdgSurface is the XdgSurfaceV6 \a toplevel is the role object for.
+ */
+
+/*!
+ * \fn void QWaylandXdgShellV6::toplevelCreated(QWaylandXdgToplevelV6 *toplevel, QWaylandXdgSurfaceV6 *xdgSurface)
+ *
+ * This signal is emitted when the client has created a \c zxdg_toplevel_v6.
+ * A common use case is to let the handler of this signal instantiate a QWaylandShellSurfaceItem or
+ * QWaylandQuickItem for displaying \a toplevel in a QtQuick scene.
+ *
+ * \a xdgSurface is the XdgSurfaceV6 \a toplevel is the role object for.
+ */
+
+/*!
+ * \qmlsignal QtWaylandCompositor::XdgShellV6::popupCreated(XdgPopupV6 popup, XdgSurfaceV6 xdgSurface)
+ *
+ * This signal is emitted when the client has created a \c zxdg_popup_v6.
+ * A common use case is to let the handler of this signal instantiate a ShellSurfaceItem or
+ * WaylandQuickItem for displaying \a popup in a QtQuick scene.
+ *
+ * \a xdgSurface is the XdgSurfaceV6 \a popup is the role object for.
+ */
+
+/*!
+ * \fn void QWaylandXdgShellV6::popupCreated(QWaylandXdgPopupV6 *popup, QWaylandXdgSurfaceV6 *xdgSurface)
+ *
+ * This signal is emitted when the client has created a \c zxdg_popup_v6.
+ * A common use case is to let the handler of this signal instantiate a QWaylandShellSurfaceItem or
+ * QWaylandQuickItem for displaying \a popup in a QtQuick scene.
+ *
+ * \a xdgSurface is the XdgSurfaceV6 \a popup is the role object for.
+ */
+
+/*!
+ * \qmlsignal QtWaylandCompositor::XdgShellV6::pong(int serial)
+ *
+ * This signal is emitted when the client has responded to a ping event with serial, \a serial.
+ *
+ * \sa ping()
+ */
+
+/*!
+ * \fn void QWaylandXdgShellV6::pong(uint serial)
+ *
+ * This signal is emitted when the client has responded to a ping event with serial, \a serial.
+ *
+ * \sa QWaylandXdgShellV6::ping()
+ */
+
 QList<int> QWaylandXdgToplevelV6::statesAsInts() const
 {
    QList<int> list;
@@ -1097,8 +1202,6 @@ QWaylandSurfaceRole QWaylandXdgToplevelV6Private::s_role("zxdg_toplevel_v6");
 
 QWaylandXdgToplevelV6Private::QWaylandXdgToplevelV6Private(QWaylandXdgSurfaceV6 *xdgSurface, const QWaylandResource &resource)
     : m_xdgSurface(xdgSurface)
-    , m_parentToplevel(nullptr)
-    , m_lastAckedConfigure({{}, QSize(0, 0), 0})
 {
     init(resource.resource());
 }
@@ -1522,7 +1625,7 @@ Qt::Edges QWaylandXdgPopupV6::gravityEdges() const
  */
 
 /*!
- * \property QWaylandXdgPopup::slideConstraints
+ * \property QWaylandXdgPopupV6::slideConstraints
  *
  * This property holds the orientations in which the child should slide to fit within the screen.
  */
@@ -1552,7 +1655,7 @@ Qt::Orientations QWaylandXdgPopupV6::slideConstraints() const
  */
 
 /*!
- * \property QWaylandXdgPopup::flipConstraints
+ * \property QWaylandXdgPopupV6::flipConstraints
  *
  * This property holds the orientations in which the child should flip to fit within the screen.
  */
@@ -1582,7 +1685,7 @@ Qt::Orientations QWaylandXdgPopupV6::flipConstraints() const
  */
 
 /*!
- * \property QWaylandXdgPopup::resizeConstraints
+ * \property QWaylandXdgPopupV6::resizeConstraints
  *
  * This property holds the orientations in which the child should resize to fit within the screen.
  */
@@ -1609,7 +1712,7 @@ Qt::Orientations QWaylandXdgPopupV6::resizeConstraints() const
  */
 
 /*!
- * \property QWaylandXdgPopup::offset
+ * \property QWaylandXdgPopupV6::offset
  *
  * Returns the surface position relative to the position of the anchor on the anchor
  * rectangle and the anchor on the surface.
@@ -1627,7 +1730,7 @@ QPoint QWaylandXdgPopupV6::offset() const
  */
 
 /*!
- * \property QWaylandXdgPopup::positionerSize
+ * \property QWaylandXdgPopupV6::positionerSize
  *
  * Returns the size requested for the window geometry by the positioner object.
  */
@@ -1645,7 +1748,7 @@ QSize QWaylandXdgPopupV6::positionerSize() const
  */
 
 /*!
- * \property QWaylandXdgPopup::unconstrainedPosition
+ * \property QWaylandXdgPopupV6::unconstrainedPosition
  *
  * The position of the surface relative to the parent window geometry if the surface
  * is not constrained. I.e. when not moved to fit inside the screen or similar.
@@ -1756,10 +1859,7 @@ void QWaylandXdgPopupV6Private::zxdg_popup_v6_grab(QtWaylandServer::zxdg_popup_v
 QWaylandSurfaceRole QWaylandXdgPopupV6Private::s_role("zxdg_popup_v6");
 
 QWaylandXdgPositionerV6Data::QWaylandXdgPositionerV6Data()
-    : anchorEdges(0)
-    , gravityEdges(0)
-    , constraintAdjustments(ZXDG_POSITIONER_V6_CONSTRAINT_ADJUSTMENT_NONE)
-    , offset(0, 0)
+    : offset(0, 0)
 {}
 
 bool QWaylandXdgPositionerV6Data::isComplete() const

@@ -57,10 +57,6 @@ namespace QtWaylandClient {
 QWaylandEglWindow::QWaylandEglWindow(QWindow *window)
     : QWaylandWindow(window)
     , m_clientBufferIntegration(static_cast<QWaylandEglClientBufferIntegration *>(mDisplay->clientBufferIntegration()))
-    , m_waylandEglWindow(0)
-    , m_eglSurface(0)
-    , m_contentFBO(0)
-    , m_resize(false)
 {
     QSurfaceFormat fmt = window->requestedFormat();
     if (mDisplay->supportsWindowDecoration())
@@ -164,12 +160,6 @@ void QWaylandEglWindow::setVisible(bool visible)
 {
     QWaylandWindow::setVisible(visible);
     if (!visible)
-        QMetaObject::invokeMethod(this, "doInvalidateSurface", Qt::QueuedConnection);
-}
-
-void QWaylandEglWindow::doInvalidateSurface()
-{
-    if (!window()->isVisible())
         invalidateSurface();
 }
 

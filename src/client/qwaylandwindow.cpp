@@ -75,28 +75,12 @@ QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-QWaylandWindow *QWaylandWindow::mMouseGrab = 0;
+QWaylandWindow *QWaylandWindow::mMouseGrab = nullptr;
 
 QWaylandWindow::QWaylandWindow(QWindow *window)
-    : QObject()
-    , QPlatformWindow(window)
+    : QPlatformWindow(window)
     , mDisplay(waylandScreen()->display())
-    , mShellSurface(0)
-    , mSubSurfaceWindow(0)
-    , mWindowDecoration(0)
-    , mMouseEventsInContentArea(false)
-    , mMousePressedInContentArea(Qt::NoButton)
-    , mWaitingForFrameSync(false)
-    , mRequestResizeSent(false)
-    , mCanResize(true)
-    , mResizeDirty(false)
     , mResizeAfterSwap(qEnvironmentVariableIsSet("QT_WAYLAND_RESIZE_AFTER_SWAP"))
-    , mSentInitialResize(false)
-    , mScale(1)
-    , mState(Qt::WindowNoState)
-    , mMask()
-    , mBackingStore(nullptr)
-    , mUpdateRequested(false)
 {
     static WId id = 1;
     mWindowId = id++;
@@ -124,7 +108,7 @@ QWaylandWindow::~QWaylandWindow()
     }
 
     if (mMouseGrab == this) {
-        mMouseGrab = 0;
+        mMouseGrab = nullptr;
     }
 }
 
@@ -256,9 +240,9 @@ void QWaylandWindow::reset(bool sendDestroyEvent)
         QGuiApplication::sendEvent(window(), &e);
     }
     delete mShellSurface;
-    mShellSurface = 0;
+    mShellSurface = nullptr;
     delete mSubSurfaceWindow;
-    mSubSurfaceWindow = 0;
+    mSubSurfaceWindow = nullptr;
     if (isInitialized())
         destroy();
 
@@ -285,7 +269,7 @@ void QWaylandWindow::setParent(const QPlatformWindow *parent)
     if (!window()->isVisible())
         return;
 
-    QWaylandWindow *oldparent = mSubSurfaceWindow ? mSubSurfaceWindow->parent() : 0;
+    QWaylandWindow *oldparent = mSubSurfaceWindow ? mSubSurfaceWindow->parent() : nullptr;
     if (oldparent == parent)
         return;
 
@@ -574,7 +558,7 @@ void QWaylandWindow::attach(QWaylandBuffer *buffer, int x, int y)
 
         attach(buffer->buffer(), x, y);
     } else {
-        QtWayland::wl_surface::attach(0, 0, 0);
+        QtWayland::wl_surface::attach(nullptr, 0, 0);
     }
 }
 
@@ -612,9 +596,8 @@ void QWaylandWindow::frameCallback(void *data, struct wl_callback *callback, uin
 
     self->mWaitingForFrameSync = false;
     if (self->mUpdateRequested) {
-        QWindowPrivate *w = QWindowPrivate::get(self->window());
         self->mUpdateRequested = false;
-        w->deliverUpdateRequest();
+        self->deliverUpdateRequest();
     }
 }
 
@@ -777,7 +760,7 @@ bool QWaylandWindow::createDecoration()
         }
     } else {
         delete mWindowDecoration;
-        mWindowDecoration = 0;
+        mWindowDecoration = nullptr;
     }
 
     if (hadDecoration != (bool)mWindowDecoration) {
@@ -801,7 +784,7 @@ static QWaylandWindow *closestShellSurfaceWindow(QWindow *window)
 {
     while (window) {
         auto w = static_cast<QWaylandWindow *>(window->handle());
-        if (w->shellSurface())
+        if (w && w->shellSurface())
             return w;
         window = window->transientParent() ? window->transientParent() : window->parent();
     }
@@ -946,8 +929,7 @@ void QWaylandWindow::restoreMouseCursor(QWaylandInputDevice *device)
 
 void QWaylandWindow::requestActivateWindow()
 {
-    // no-op. Wayland does not have activation protocol,
-    // we rely on compositor setting keyboard focus based on window stacking.
+    qCWarning(lcQpaWayland) << "Wayland does not support QWindow::requestActivate()";
 }
 
 void QWaylandWindow::unfocus()
@@ -984,7 +966,7 @@ bool QWaylandWindow::setMouseGrabEnabled(bool grab)
         return false;
     }
 
-    mMouseGrab = grab ? this : 0;
+    mMouseGrab = grab ? this : nullptr;
     return true;
 }
 
@@ -1059,6 +1041,14 @@ void QWaylandWindow::requestUpdate()
 void QWaylandWindow::addAttachOffset(const QPoint point)
 {
     mOffset += point;
+}
+
+bool QtWaylandClient::QWaylandWindow::startSystemMove(const QPoint &pos)
+{
+    Q_UNUSED(pos);
+    if (auto seat = display()->lastInputDevice())
+        return mShellSurface && mShellSurface->move(seat);
+    return false;
 }
 
 }

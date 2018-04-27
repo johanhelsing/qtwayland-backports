@@ -219,8 +219,8 @@ public:
         m_blitProgram->disableAttributeArray(1);
     }
 
-    QOpenGLShaderProgram *m_blitProgram;
-    QWaylandGLContext *m_context;
+    QOpenGLShaderProgram *m_blitProgram = nullptr;
+    QWaylandGLContext *m_context = nullptr;
 };
 
 
@@ -229,9 +229,6 @@ QWaylandGLContext::QWaylandGLContext(EGLDisplay eglDisplay, QWaylandDisplay *dis
     : QPlatformOpenGLContext()
     , m_eglDisplay(eglDisplay)
     , m_display(display)
-    , m_blitter(0)
-    , mUseNativeDefaultFbo(false)
-    , mSupportNonBlockingSwap(true)
 {
     QSurfaceFormat fmt = format;
     if (static_cast<QWaylandIntegration *>(QGuiApplicationPrivate::platformIntegration())->display()->supportsWindowDecoration())
@@ -262,10 +259,18 @@ QWaylandGLContext::QWaylandGLContext(EGLDisplay eglDisplay, QWaylandDisplay *dis
         }
         // Profiles are OpenGL only and mandatory in 3.2+. The value is silently ignored for < 3.2.
         if (m_format.renderableType() == QSurfaceFormat::OpenGL) {
-            eglContextAttrs.append(EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR);
-            eglContextAttrs.append(format.profile() == QSurfaceFormat::CoreProfile
-                                ? EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR
-                                : EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT_KHR);
+            switch (format.profile()) {
+            case QSurfaceFormat::NoProfile:
+                break;
+            case QSurfaceFormat::CoreProfile:
+                eglContextAttrs.append(EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR);
+                eglContextAttrs.append(EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR);
+                break;
+            case QSurfaceFormat::CompatibilityProfile:
+                eglContextAttrs.append(EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR);
+                eglContextAttrs.append(EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT_KHR);
+                break;
+            }
         }
     }
     eglContextAttrs.append(EGL_NONE);
@@ -515,7 +520,7 @@ private:
         GLint stride;
         GLenum type;
         bool normalized;
-        void *pointer;
+        void *pointer = nullptr;
     } m_vertexAttribs[STATE_GUARD_VERTEX_ATTRIB_COUNT];
     GLenum m_minFilter;
     GLenum m_magFilter;

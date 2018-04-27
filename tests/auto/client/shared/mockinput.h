@@ -60,7 +60,7 @@ protected:
     void seat_get_touch(Resource *resource, uint32_t id) override;
 
 private:
-    Compositor *m_compositor;
+    Compositor *m_compositor = nullptr;
 
     QScopedPointer<Keyboard> m_keyboard;
     QScopedPointer<Pointer> m_pointer;
@@ -83,10 +83,10 @@ protected:
     void keyboard_destroy_resource(wl_keyboard::Resource *resource) override;
 
 private:
-    Compositor *m_compositor;
+    Compositor *m_compositor = nullptr;
 
-    Resource *m_focusResource;
-    Surface *m_focus;
+    Resource *m_focusResource = nullptr;
+    Surface *m_focus = nullptr;
 };
 
 class Pointer : public QtWaylandServer::wl_pointer
@@ -106,10 +106,10 @@ protected:
     void pointer_destroy_resource(wl_pointer::Resource *resource) override;
 
 private:
-    Compositor *m_compositor;
+    Compositor *m_compositor = nullptr;
 
-    Resource *m_focusResource;
-    Surface *m_focus;
+    Resource *m_focusResource = nullptr;
+    Surface *m_focus = nullptr;
 };
 
 class Touch : public QtWaylandServer::wl_touch
@@ -121,7 +121,7 @@ public:
     void sendMotion(Surface *surface, const QPoint &position, int id);
     void sendFrame(Surface *surface);
 private:
-    Compositor *m_compositor;
+    Compositor *m_compositor = nullptr;
 };
 
 class DataOffer : public QtWaylandServer::wl_data_offer
@@ -145,9 +145,9 @@ protected:
     void data_device_start_drag(Resource *resource, struct ::wl_resource *source, struct ::wl_resource *origin, struct ::wl_resource *icon, uint32_t serial) override;
 
 private:
-    Compositor *m_compositor;
-    QtWaylandServer::wl_data_offer *m_dataOffer;
-    Surface* m_focus;
+    Compositor *m_compositor = nullptr;
+    QtWaylandServer::wl_data_offer *m_dataOffer = nullptr;
+    Surface* m_focus = nullptr;
 };
 
 class DataDeviceManager : public QtWaylandServer::wl_data_device_manager
@@ -162,7 +162,7 @@ protected:
     void data_device_manager_create_data_source(Resource *resource, uint32_t id) override;
 
 private:
-    Compositor *m_compositor;
+    Compositor *m_compositor = nullptr;
 
     QScopedPointer<DataDevice> m_data_device;
 };

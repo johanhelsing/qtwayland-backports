@@ -142,21 +142,12 @@ public:
         return true;
     }
 
-    QWaylandCompositor *compositor;
+    QWaylandCompositor *compositor = nullptr;
 };
 
 } // namespace
 
 QWaylandCompositorPrivate::QWaylandCompositorPrivate(QWaylandCompositor *compositor)
-    : display(0)
-#if QT_CONFIG(opengl)
-    , use_hw_integration_extension(true)
-    , client_buffer_integration(0)
-    , server_buffer_integration(0)
-#endif
-    , retainSelection(false)
-    , preInitialized(false)
-    , initialized(false)
 {
     if (QGuiApplication::platformNativeInterface())
         display = static_cast<wl_display*>(QGuiApplication::platformNativeInterface()->nativeResourceForIntegration("server_wl_display"));
@@ -293,7 +284,7 @@ void QWaylandCompositorPrivate::compositor_create_surface(wl_compositor::Resourc
 #endif
     struct wl_resource *surfResource = wl_client_get_object(client->client(), id);
 
-    QWaylandSurface *surface;
+    QWaylandSurface *surface = nullptr;
     if (surfResource) {
         surface = QWaylandSurface::fromResource(surfResource);
     } else {
@@ -834,7 +825,7 @@ QWaylandSeat *QWaylandCompositor::defaultSeat() const
 QWaylandSeat *QWaylandCompositor::seatFor(QInputEvent *inputEvent)
 {
     Q_D(QWaylandCompositor);
-    QWaylandSeat *dev = NULL;
+    QWaylandSeat *dev = nullptr;
     for (int i = 0; i < d->seats.size(); i++) {
         QWaylandSeat *candidate = d->seats.at(i);
         if (candidate->isOwner(inputEvent)) {

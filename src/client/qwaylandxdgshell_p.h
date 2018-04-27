@@ -76,16 +76,16 @@ class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShell : public QtWayland::xdg_shell
 public:
     QWaylandXdgShell(struct ::xdg_shell *shell);
     QWaylandXdgShell(struct ::wl_registry *registry, uint32_t id);
-    virtual ~QWaylandXdgShell();
+    ~QWaylandXdgShell() override;
 
     QWaylandXdgSurface *createXdgSurface(QWaylandWindow *window);
-    QWaylandXdgPopup *createXdgPopup(QWaylandWindow *window);
+    QWaylandXdgPopup *createXdgPopup(QWaylandWindow *window, QWaylandInputDevice *inputDevice);
 
 private:
     void xdg_shell_ping(uint32_t serial) override;
 
     QVector<QWaylandWindow *> m_popups;
-    uint m_popupSerial;
+    uint m_popupSerial = 0;
 };
 
 QT_END_NAMESPACE

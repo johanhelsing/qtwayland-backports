@@ -59,17 +59,20 @@ QT_BEGIN_NAMESPACE
 
 class Window;
 class QOpenGLTexture;
+class QWaylandIviApplication;
+class QWaylandIviSurface;
 
 class View : public QWaylandView
 {
     Q_OBJECT
 public:
-    View() : m_texture(0) {}
+    View(int iviId) : m_iviId(iviId) {}
     QOpenGLTexture *getTexture();
-    bool isCursor() const;
+    int iviId() const { return m_iviId; }
 private:
     friend class Compositor;
-    QOpenGLTexture *m_texture;
+    QOpenGLTexture *m_texture = nullptr;
+    int m_iviId;
 };
 
 class Compositor : public QWaylandCompositor
@@ -77,7 +80,7 @@ class Compositor : public QWaylandCompositor
     Q_OBJECT
 public:
     Compositor(Window *window);
-    ~Compositor();
+    ~Compositor() override;
     void create() override;
 
     QList<View*> views() const { return m_views; }
@@ -86,13 +89,14 @@ public:
     void endRender();
 
 private slots:
-    void onSurfaceCreated(QWaylandSurface *surface);
+    void onIviSurfaceCreated(QWaylandIviSurface *iviSurface);
     void onSurfaceDestroyed();
     void triggerRender();
 
     void viewSurfaceDestroyed();
 private:
-    Window *m_window;
+    Window *m_window = nullptr;
+    QWaylandIviApplication *m_iviApplication = nullptr;
     QList<View*> m_views;
 };
 

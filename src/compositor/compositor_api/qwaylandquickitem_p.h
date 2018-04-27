@@ -86,7 +86,7 @@ class QWaylandBufferMaterial : public QSGMaterial
 {
 public:
     QWaylandBufferMaterial(QWaylandBufferRef::BufferFormatEgl format);
-    ~QWaylandBufferMaterial();
+    ~QWaylandBufferMaterial() override;
 
     void setTextureForPlane(int plane, QOpenGLTexture *texture);
 
@@ -107,22 +107,7 @@ class QWaylandQuickItemPrivate : public QQuickItemPrivate
 {
     Q_DECLARE_PUBLIC(QWaylandQuickItem)
 public:
-    QWaylandQuickItemPrivate()
-        : QQuickItemPrivate()
-        , view(nullptr)
-        , oldSurface(nullptr)
-        , provider(nullptr)
-        , paintEnabled(true)
-        , touchEventsEnabled(true)
-        , inputEventsEnabled(true)
-        , isDragging(false)
-        , newTexture(false)
-        , focusOnClick(true)
-        , sizeFollowsSurface(true)
-        , connectedWindow(nullptr)
-        , origin(QWaylandSurface::OriginTopLeft)
-    {
-    }
+    QWaylandQuickItemPrivate() = default;
 
     void init()
     {
@@ -167,19 +152,19 @@ public:
     static QMutex *mutex;
 
     QScopedPointer<QWaylandView> view;
-    QWaylandSurface *oldSurface;
-    mutable QWaylandSurfaceTextureProvider *provider;
-    bool paintEnabled;
-    bool touchEventsEnabled;
-    bool inputEventsEnabled;
-    bool isDragging;
-    bool newTexture;
-    bool focusOnClick;
-    bool sizeFollowsSurface;
+    QWaylandSurface *oldSurface = nullptr;
+    mutable QWaylandSurfaceTextureProvider *provider = nullptr;
+    bool paintEnabled = true;
+    bool touchEventsEnabled = true;
+    bool inputEventsEnabled = true;
+    bool isDragging = false;
+    bool newTexture = false;
+    bool focusOnClick = true;
+    bool sizeFollowsSurface = true;
     QPoint hoverPos;
 
-    QQuickWindow *connectedWindow;
-    QWaylandSurface::Origin origin;
+    QQuickWindow *connectedWindow = nullptr;
+    QWaylandSurface::Origin origin = QWaylandSurface::OriginTopLeft;
     QPointer<QObject> subsurfaceHandler;
     QVector<QWaylandSeat *> touchingSeats;
 };

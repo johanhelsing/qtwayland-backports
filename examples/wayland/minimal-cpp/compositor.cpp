@@ -52,6 +52,8 @@
 #include "window.h"
 
 #include <QtWaylandCompositor/qwaylandoutput.h>
+#include <QtWaylandCompositor/qwaylandiviapplication.h>
+#include <QtWaylandCompositor/qwaylandivisurface.h>
 #include <QOpenGLFunctions>
 
 QOpenGLTexture *View::getTexture() {
@@ -60,14 +62,8 @@ QOpenGLTexture *View::getTexture() {
     return m_texture;
 }
 
-bool View::isCursor() const
-{
-    return surface()->isCursorSurface();
-}
-
 Compositor::Compositor(Window *window)
-    : QWaylandCompositor()
-    , m_window(window)
+    : m_window(window)
 {
 }
 
@@ -83,18 +79,18 @@ void Compositor::create()
     QWaylandCompositor::create();
     output->setCurrentMode(mode);
 
-    connect(this, &QWaylandCompositor::surfaceCreated, this, &Compositor::onSurfaceCreated);
+    m_iviApplication = new QWaylandIviApplication(this);
+    connect(m_iviApplication, &QWaylandIviApplication::iviSurfaceCreated, this, &Compositor::onIviSurfaceCreated);
 }
 
-void Compositor::onSurfaceCreated(QWaylandSurface *surface)
+void Compositor::onIviSurfaceCreated(QWaylandIviSurface *iviSurface)
 {
-    connect(surface, &QWaylandSurface::surfaceDestroyed, this, &Compositor::onSurfaceDestroyed);
-    connect(surface, &QWaylandSurface::redraw, this, &Compositor::triggerRender);
-    View *view = new View;
-    view->setSurface(surface);
+    View *view = new View(iviSurface->iviId());
+    view->setSurface(iviSurface->surface());
     view->setOutput(outputFor(m_window));
     m_views << view;
     connect(view, &QWaylandView::surfaceDestroyed, this, &Compositor::viewSurfaceDestroyed);
+    connect(iviSurface->surface(), &QWaylandSurface::redraw, this, &Compositor::triggerRender);
 }
 
 void Compositor::onSurfaceDestroyed()

@@ -72,7 +72,7 @@ class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgPopup : public QWaylandShellSurface
     Q_OBJECT
 public:
     QWaylandXdgPopup(struct ::xdg_popup *popup, QWaylandWindow *window);
-    virtual ~QWaylandXdgPopup();
+    ~QWaylandXdgPopup() override;
 
     void setType(Qt::WindowType type, QWaylandWindow *transientParent) override;
 
@@ -80,8 +80,8 @@ protected:
     void xdg_popup_popup_done() override;
 
 private:
-    QWaylandExtendedSurface *m_extendedWindow;
-    QWaylandWindow *m_window;
+    QWaylandExtendedSurface *m_extendedWindow = nullptr;
+    QWaylandWindow *m_window = nullptr;
 };
 
 QT_END_NAMESPACE

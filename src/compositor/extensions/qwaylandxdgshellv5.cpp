@@ -60,8 +60,6 @@ QWaylandSurfaceRole QWaylandXdgSurfaceV5Private::s_role("xdg_surface");
 QWaylandSurfaceRole QWaylandXdgPopupV5Private::s_role("xdg_popup");
 
 QWaylandXdgShellV5Private::QWaylandXdgShellV5Private()
-    : QWaylandCompositorExtensionPrivate()
-    , xdg_shell()
 {
 }
 
@@ -223,14 +221,7 @@ void QWaylandXdgShellV5Private::xdg_shell_pong(Resource *resource, uint32_t seri
 }
 
 QWaylandXdgSurfaceV5Private::QWaylandXdgSurfaceV5Private()
-    : QWaylandCompositorExtensionPrivate()
-    , xdg_surface()
-    , m_xdgShell(nullptr)
-    , m_surface(nullptr)
-    , m_parentSurface(nullptr)
-    , m_windowType(Qt::WindowType::Window)
-    , m_unsetWindowGeometry(true)
-    , m_lastAckedConfigure({{}, QSize(0, 0), 0})
+    : m_lastAckedConfigure({{}, QSize(0, 0), 0})
 {
 }
 
@@ -490,11 +481,6 @@ void QWaylandXdgSurfaceV5Private::xdg_surface_set_window_geometry(Resource *reso
 }
 
 QWaylandXdgPopupV5Private::QWaylandXdgPopupV5Private()
-    : QWaylandCompositorExtensionPrivate()
-    , xdg_popup()
-    , m_surface(nullptr)
-    , m_parentSurface(nullptr)
-    , m_xdgShell(nullptr)
 {
 }
 
@@ -1206,7 +1192,8 @@ QSize QWaylandXdgSurfaceV5::sizeForResize(const QSizeF &size, const QPointF &del
     else if (edge & BottomEdge)
         height += delta.y();
 
-    return QSizeF(width, height).toSize();
+    QSizeF newSize(qMax(width, 1.0), qMax(height, 1.0));
+    return newSize.toSize();
 }
 
 /*!
@@ -1222,6 +1209,10 @@ QSize QWaylandXdgSurfaceV5::sizeForResize(const QSizeF &size, const QPointF &del
  */
 uint QWaylandXdgSurfaceV5::sendConfigure(const QSize &size, const QVector<uint> &states)
 {
+    if (!size.isValid()) {
+        qWarning() << "Can't configure xdg surface (v5) with an invalid size" << size;
+        return 0;
+    }
     Q_D(QWaylandXdgSurfaceV5);
     auto statesBytes = QByteArray::fromRawData((char *)states.data(), states.size() * sizeof(State));
     QWaylandSurface *surface = qobject_cast<QWaylandSurface *>(extensionContainer());

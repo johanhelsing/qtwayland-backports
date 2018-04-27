@@ -58,8 +58,6 @@ QT_BEGIN_NAMESPACE
 QWaylandSurfaceRole QWaylandWlShellSurfacePrivate::s_role("wl_shell_surface");
 
 QWaylandWlShellPrivate::QWaylandWlShellPrivate()
-    : QWaylandCompositorExtensionPrivate()
-    , wl_shell()
 {
 }
 
@@ -102,11 +100,6 @@ void QWaylandWlShellPrivate::unregisterShellSurface(QWaylandWlShellSurface *shel
 }
 
 QWaylandWlShellSurfacePrivate::QWaylandWlShellSurfacePrivate()
-    : QWaylandCompositorExtensionPrivate()
-    , wl_shell_surface()
-    , m_shell(nullptr)
-    , m_surface(nullptr)
-    , m_windowType(Qt::WindowType::Window)
 {
 }
 
@@ -530,7 +523,8 @@ QSize QWaylandWlShellSurface::sizeForResize(const QSizeF &size, const QPointF &d
     else if (edge & BottomEdge)
         height += delta.y();
 
-    return QSizeF(width, height).toSize();
+    QSizeF newSize(qMax(width, 1.0), qMax(height, 1.0));
+    return newSize.toSize();
 }
 
 /*!
@@ -566,6 +560,10 @@ QSize QWaylandWlShellSurface::sizeForResize(const QSizeF &size, const QPointF &d
 void QWaylandWlShellSurface::sendConfigure(const QSize &size, ResizeEdge edges)
 {
     Q_D(QWaylandWlShellSurface);
+    if (!size.isValid()) {
+        qWarning() << "Can't configure wl_shell_surface with an invalid size" << size;
+        return;
+    }
     d->send_configure(edges, size.width(), size.height());
 }
 
@@ -704,7 +702,7 @@ QWaylandWlShellSurface *QWaylandWlShellSurface::fromResource(wl_resource *resour
     QWaylandWlShellSurfacePrivate::Resource *res = QWaylandWlShellSurfacePrivate::Resource::fromResource(resource);
     if (res)
         return static_cast<QWaylandWlShellSurfacePrivate *>(res->shell_surface_object)->q_func();
-    return 0;
+    return nullptr;
 }
 
 QT_END_NAMESPACE

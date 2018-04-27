@@ -57,11 +57,6 @@ QWaylandXdgSurface::QWaylandXdgSurface(QWaylandXdgShell *shell, QWaylandWindow *
     , QtWayland::xdg_surface(shell->get_xdg_surface(window->object()))
     , m_window(window)
     , m_shell(shell)
-    , m_maximized(false)
-    , m_minimized(false)
-    , m_fullscreen(false)
-    , m_active(false)
-    , m_extendedWindow(nullptr)
 {
     if (window->display()->windowExtension())
         m_extendedWindow = new QWaylandExtendedSurface(window);
@@ -90,10 +85,11 @@ void QWaylandXdgSurface::resize(QWaylandInputDevice *inputDevice, enum resize_ed
            edges);
 }
 
-void QWaylandXdgSurface::move(QWaylandInputDevice *inputDevice)
+bool QWaylandXdgSurface::move(QWaylandInputDevice *inputDevice)
 {
     move(inputDevice->wl_seat(),
          inputDevice->serial());
+    return true;
 }
 
 void QWaylandXdgSurface::setMaximized()
