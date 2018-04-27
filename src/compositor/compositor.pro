@@ -30,7 +30,5 @@ include ($$PWD/compositor_api/compositor_api.pri)
 include ($$PWD/extensions/extensions.pri)
 
 MODULE_PLUGIN_TYPES = \
-    wayland-graphics-integration-server \
-    wayland-hardware-layer-integration \
-
+    wayland-graphics-integration-server
 load(qt_module)

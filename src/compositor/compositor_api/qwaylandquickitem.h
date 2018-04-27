@@ -184,7 +184,7 @@ Q_SIGNALS:
     void bufferLockedChanged();
     void allowDiscardFrontBufferChanged();
 protected:
-    QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *data) override;
+    QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
 
     QWaylandQuickItem(QWaylandQuickItemPrivate &dd, QQuickItem *parent = nullptr);
 };

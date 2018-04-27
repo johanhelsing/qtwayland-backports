@@ -18,5 +18,4 @@ qtHaveModule(quick) {
             custom-extension \
             server-buffer
     }
-    SUBDIRS += hwlayer-compositor
 }

@@ -40,8 +40,6 @@
 #ifndef QWAYLANDSURFACEVIEW_P_H
 #define QWAYLANDSURFACEVIEW_P_H
 
-#include "qwaylandview.h"
-
 #include <QtCore/QPoint>
 #include <QtCore/QMutex>
 #include <QtCore/private/qobject_p.h>
@@ -97,7 +95,6 @@ public:
     bool broadcastRequestedPositionChanged;
     bool forceAdvanceSucceed;
     bool allowDiscardFrontBuffer;
-    bool independentFrameCallback = false; //If frame callbacks are independent of the main quick scene graph
 };
 
 QT_END_NAMESPACE
