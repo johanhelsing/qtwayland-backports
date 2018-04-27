@@ -179,8 +179,6 @@ bool QWaylandIntegration::hasCapability(QPlatformIntegration::Capability cap) co
         return true;
     case RasterGLSurface:
         return true;
-    case WindowActivation:
-        return false;
     default: return QPlatformIntegration::hasCapability(cap);
     }
 }
