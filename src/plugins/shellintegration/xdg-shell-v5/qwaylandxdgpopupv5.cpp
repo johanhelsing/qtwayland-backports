@@ -1,9 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 Eurogiciel, author: <philippe.coval@eurogiciel.fr>
+** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the config.tests of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -37,59 +37,42 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDXDGSHELL_H
-#define QWAYLANDXDGSHELL_H
+#include "qwaylandxdgpopupv5_p.h"
 
-//
-//  W A R N I N G
-//  -------------
-//
-// This file is not part of the Qt API.  It exists purely as an
-// implementation detail.  This header file may change from version to
-// version without notice, or even be removed.
-//
-// We mean it.
-//
-
-#include <QtCore/QSize>
-#include <QtCore/QVector>
-
-#include <wayland-client.h>
-
-#include <QtWaylandClient/private/qwayland-xdg-shell.h>
-#include <QtWaylandClient/qtwaylandclientglobal.h>
-#include <QtWaylandClient/private/qwaylandshellsurface_p.h>
+#include <QtWaylandClient/private/qwaylanddisplay_p.h>
+#include <QtWaylandClient/private/qwaylandwindow_p.h>
+#include <QtWaylandClient/private/qwaylandextendedsurface_p.h>
 
 QT_BEGIN_NAMESPACE
 
-class QWindow;
-
 namespace QtWaylandClient {
 
-class QWaylandWindow;
-class QWaylandInputDevice;
-class QWaylandXdgSurface;
-class QWaylandXdgPopup;
-
-class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShell : public QtWayland::xdg_shell
+QWaylandXdgPopupV5::QWaylandXdgPopupV5(struct ::xdg_popup *popup, QWaylandWindow *window)
+    : QWaylandShellSurface(window)
+    , QtWayland::xdg_popup(popup)
+    , m_window(window)
 {
-public:
-    QWaylandXdgShell(struct ::xdg_shell *shell);
-    QWaylandXdgShell(struct ::wl_registry *registry, uint32_t id);
-    ~QWaylandXdgShell() override;
+    if (window->display()->windowExtension())
+        m_extendedWindow = new QWaylandExtendedSurface(window);
+}
 
-    QWaylandXdgSurface *createXdgSurface(QWaylandWindow *window);
-    QWaylandXdgPopup *createXdgPopup(QWaylandWindow *window, QWaylandInputDevice *inputDevice);
+QWaylandXdgPopupV5::~QWaylandXdgPopupV5()
+{
+    xdg_popup_destroy(object());
+    delete m_extendedWindow;
+}
 
-private:
-    void xdg_shell_ping(uint32_t serial) override;
+void QWaylandXdgPopupV5::setType(Qt::WindowType type, QWaylandWindow *transientParent)
+{
+    Q_UNUSED(type);
+    Q_UNUSED(transientParent);
+}
 
-    QVector<QWaylandWindow *> m_popups;
-    uint m_popupSerial = 0;
-};
-
-QT_END_NAMESPACE
+void QWaylandXdgPopupV5::xdg_popup_popup_done()
+{
+    m_window->window()->close();
+}
 
 }
 
-#endif // QWAYLANDXDGSHELL_H
+QT_END_NAMESPACE

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2016 Eurogiciel, author: <philippe.coval@eurogiciel.fr>
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the config.tests of the Qt Toolkit.
@@ -37,8 +37,8 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDXDGSURFACE_H
-#define QWAYLANDXDGSURFACE_H
+#ifndef QWAYLANDXDGSHELLV5_H
+#define QWAYLANDXDGSHELLV5_H
 
 //
 //  W A R N I N G
@@ -51,13 +51,14 @@
 // We mean it.
 //
 
+#include "qwayland-xdg-shell-unstable-v5.h"
+
 #include <QtCore/QSize>
-#include <QtCore/QMargins>
+#include <QtCore/QVector>
 
 #include <wayland-client.h>
 
 #include <QtWaylandClient/qtwaylandclientglobal.h>
-#include <QtWaylandClient/private/qwayland-xdg-shell.h>
 #include <QtWaylandClient/private/qwaylandshellsurface_p.h>
 
 QT_BEGIN_NAMESPACE
@@ -68,69 +69,28 @@ namespace QtWaylandClient {
 
 class QWaylandWindow;
 class QWaylandInputDevice;
-class QWaylandExtendedSurface;
-class QWaylandXdgShell;
+class QWaylandXdgSurfaceV5;
+class QWaylandXdgPopupV5;
 
-class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgSurface : public QWaylandShellSurface
-        , public QtWayland::xdg_surface
+class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShellV5 : public QtWayland::xdg_shell
 {
-    Q_OBJECT
 public:
-    QWaylandXdgSurface(QWaylandXdgShell *shell, QWaylandWindow *window);
-    ~QWaylandXdgSurface() override;
+    QWaylandXdgShellV5(struct ::xdg_shell *shell);
+    QWaylandXdgShellV5(struct ::wl_registry *registry, uint32_t id);
+    ~QWaylandXdgShellV5() override;
 
-    using QtWayland::xdg_surface::resize;
-    void resize(QWaylandInputDevice *inputDevice, enum resize_edge edges);
-
-    void resize(QWaylandInputDevice *inputDevice, enum wl_shell_surface_resize edges) override;
-
-    using QtWayland::xdg_surface::move;
-    bool move(QWaylandInputDevice *inputDevice) override;
-
-    void setTitle(const QString &title) override;
-    void setAppId(const QString &appId) override;
-
-    void raise() override;
-    void lower() override;
-    void setContentOrientationMask(Qt::ScreenOrientations orientation) override;
-    void setWindowFlags(Qt::WindowFlags flags) override;
-    void sendProperty(const QString &name, const QVariant &value) override;
-
-    bool isFullscreen() const { return m_fullscreen; }
-    bool isMaximized() const { return m_maximized; }
-
-    void setType(Qt::WindowType type, QWaylandWindow *transientParent) override;
+    QWaylandXdgSurfaceV5 *createXdgSurface(QWaylandWindow *window);
+    QWaylandXdgPopupV5 *createXdgPopup(QWaylandWindow *window, QWaylandInputDevice *inputDevice);
 
 private:
-    void setMaximized() override;
-    void setFullscreen() override;
-    void setNormal() override;
-    void setMinimized() override;
+    void xdg_shell_ping(uint32_t serial) override;
 
-    void updateTransientParent(QWaylandWindow *parent);
-
-private:
-    QWaylandWindow *m_window = nullptr;
-    QWaylandXdgShell* m_shell = nullptr;
-    bool m_maximized = false;
-    bool m_minimized = false;
-    bool m_fullscreen = false;
-    bool m_active = false;
-    QSize m_normalSize;
-    QMargins m_margins;
-    QWaylandExtendedSurface *m_extendedWindow = nullptr;
-
-    void xdg_surface_configure(int32_t width,
-                               int32_t height,
-                               struct wl_array *states,
-                               uint32_t serial) override;
-    void xdg_surface_close() override;
-
-    friend class QWaylandWindow;
+    QVector<QWaylandWindow *> m_popups;
+    uint m_popupSerial = 0;
 };
 
 QT_END_NAMESPACE
 
 }
 
-#endif // QWAYLANDXDGSURFACE_H
+#endif // QWAYLANDXDGSHELLV5_H

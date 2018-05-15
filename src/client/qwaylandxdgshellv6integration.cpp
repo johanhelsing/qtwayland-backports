@@ -41,9 +41,6 @@
 
 #include <QtWaylandClient/private/qwaylandwindow_p.h>
 #include <QtWaylandClient/private/qwaylanddisplay_p.h>
-#include <QtWaylandClient/private/qwaylandxdgsurface_p.h>
-#include <QtWaylandClient/private/qwaylandxdgpopup_p.h>
-#include <QtWaylandClient/private/qwaylandxdgshell_p.h>
 #include <QtWaylandClient/private/qwaylandxdgshellv6_p.h>
 
 QT_BEGIN_NAMESPACE
@@ -62,9 +59,15 @@ QWaylandXdgShellV6Integration::QWaylandXdgShellV6Integration(QWaylandDisplay *di
 
 QWaylandXdgShellV6Integration *QWaylandXdgShellV6Integration::create(QWaylandDisplay *display)
 {
-    if (display->hasRegistryGlobal(QLatin1String("zxdg_shell_v6")))
-        return new QWaylandXdgShellV6Integration(display);
-    return nullptr;
+    if (!display->hasRegistryGlobal(QLatin1String("zxdg_shell_v6")))
+        return nullptr;
+
+    QScopedPointer<QWaylandXdgShellV6Integration> integration;
+    integration.reset(new QWaylandXdgShellV6Integration(display));
+    if (integration && !integration->initialize(display))
+        return nullptr;
+
+    return integration.take();
 }
 
 bool QWaylandXdgShellV6Integration::initialize(QWaylandDisplay *display)
@@ -76,6 +79,20 @@ bool QWaylandXdgShellV6Integration::initialize(QWaylandDisplay *display)
 QWaylandShellSurface *QWaylandXdgShellV6Integration::createShellSurface(QWaylandWindow *window)
 {
     return m_xdgShell->getXdgSurface(window);
+}
+
+void QWaylandXdgShellV6Integration::handleKeyboardFocusChanged(QWaylandWindow *newFocus, QWaylandWindow *oldFocus)
+{
+    if (newFocus) {
+        auto *xdgSurface = qobject_cast<QWaylandXdgSurfaceV6 *>(newFocus->shellSurface());
+        if (xdgSurface && !xdgSurface->handlesActiveState())
+            m_display->handleWindowActivated(newFocus);
+    }
+    if (oldFocus && qobject_cast<QWaylandXdgSurfaceV6 *>(oldFocus->shellSurface())) {
+        auto *xdgSurface = qobject_cast<QWaylandXdgSurfaceV6 *>(oldFocus->shellSurface());
+        if (xdgSurface && !xdgSurface->handlesActiveState())
+            m_display->handleWindowDeactivated(oldFocus);
+    }
 }
 
 }

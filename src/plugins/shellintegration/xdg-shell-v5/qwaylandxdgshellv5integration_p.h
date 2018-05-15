@@ -37,8 +37,8 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDXDGSHELLINTEGRATION_P_H
-#define QWAYLANDXDGSHELLINTEGRATION_P_H
+#ifndef QWAYLANDXDGSHELLV5INTEGRATION_P_H
+#define QWAYLANDXDGSHELLV5INTEGRATION_P_H
 
 //
 //  W A R N I N G
@@ -51,7 +51,7 @@
 // We mean it.
 //
 
-#include <wayland-client.h>
+#include "qwaylandxdgshellv5_p.h"
 
 #include <QtWaylandClient/private/qwaylandshellintegration_p.h>
 
@@ -59,24 +59,22 @@ QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-class QWaylandXdgShell;
+class QWaylandXdgShellV5;
 
-class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShellIntegration : public QWaylandShellIntegration
+class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShellV5Integration : public QWaylandShellIntegration
 {
 public:
-    static QWaylandXdgShellIntegration *create(QWaylandDisplay* display);
+    QWaylandXdgShellV5Integration() {}
     bool initialize(QWaylandDisplay *display) override;
     QWaylandShellSurface *createShellSurface(QWaylandWindow *window) override;
     void handleKeyboardFocusChanged(QWaylandWindow *newFocus, QWaylandWindow *oldFocus) override;
 
 private:
-    QWaylandXdgShellIntegration(QWaylandDisplay *display);
-
-    QWaylandXdgShell *m_xdgShell = nullptr;
+    QScopedPointer<QWaylandXdgShellV5> m_xdgShell;
 };
 
 }
 
 QT_END_NAMESPACE
 
-#endif // QWAYLANDXDGSHELLINTEGRATION_P_H
+#endif // QWAYLANDXDGSHELLV5INTEGRATION_P_H

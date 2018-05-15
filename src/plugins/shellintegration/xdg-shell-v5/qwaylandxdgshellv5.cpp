@@ -1,9 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2017 ITAGE Corporation, author: <yusuke.binsaki@itage.co.jp>
-** Contact: http://www.qt-project.org/legal
+** Copyright (C) 2016 Eurogiciel, author: <philippe.coval@eurogiciel.fr>
+** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the config.tests of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -37,71 +37,68 @@
 **
 ****************************************************************************/
 
-#include "qwaylandivisurface_p.h"
+#include "qwaylandxdgshellv5_p.h"
+#include "qwaylandxdgpopupv5_p.h"
+#include "qwaylandxdgsurfacev5_p.h"
+
+#include <QtCore/QDebug>
 
 #include <QtWaylandClient/private/qwaylanddisplay_p.h>
 #include <QtWaylandClient/private/qwaylandwindow_p.h>
+#include <QtWaylandClient/private/qwaylandinputdevice_p.h>
 #include <QtWaylandClient/private/qwaylandscreen_p.h>
-#include <QtWaylandClient/private/qwaylandextendedsurface_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-QWaylandIviSurface::QWaylandIviSurface(struct ::ivi_surface *ivi_surface, QWaylandWindow *window)
-    : QtWayland::ivi_surface(ivi_surface)
-    , QWaylandShellSurface(window)
-    , m_window(window)
+QWaylandXdgShellV5::QWaylandXdgShellV5(struct ::xdg_shell *shell)
+    : QtWayland::xdg_shell(shell)
 {
-    createExtendedSurface(window);
 }
 
-QWaylandIviSurface::QWaylandIviSurface(struct ::ivi_surface *ivi_surface, QWaylandWindow *window,
-                                       struct ::ivi_controller_surface *iviControllerSurface)
-    : QtWayland::ivi_surface(ivi_surface)
-    , QWaylandShellSurface(window)
-    , QtWayland::ivi_controller_surface(iviControllerSurface)
-    , m_window(window)
+QWaylandXdgShellV5::QWaylandXdgShellV5(struct ::wl_registry *registry, uint32_t id)
+    : QtWayland::xdg_shell(registry, id, 1)
 {
-    createExtendedSurface(window);
+    use_unstable_version(QtWayland::xdg_shell::version_current);
 }
 
-QWaylandIviSurface::~QWaylandIviSurface()
+QWaylandXdgShellV5::~QWaylandXdgShellV5()
 {
-    ivi_surface::destroy();
-    if (QtWayland::ivi_controller_surface::object())
-        QtWayland::ivi_controller_surface::destroy(0);
-
-    delete m_extendedWindow;
+    xdg_shell_destroy(object());
 }
 
-void QWaylandIviSurface::setType(Qt::WindowType type, QWaylandWindow *transientParent)
+QWaylandXdgSurfaceV5 *QWaylandXdgShellV5::createXdgSurface(QWaylandWindow *window)
 {
-
-    Q_UNUSED(type)
-    Q_UNUSED(transientParent)
+    return new QWaylandXdgSurfaceV5(this, window);
 }
 
-void QWaylandIviSurface::applyConfigure()
+QWaylandXdgPopupV5 *QWaylandXdgShellV5::createXdgPopup(QWaylandWindow *window, QWaylandInputDevice *inputDevice)
 {
-    m_window->resizeFromApplyConfigure(m_pendingSize);
+    QWaylandWindow *parentWindow = m_popups.empty() ? window->transientParent() : m_popups.last();
+    ::wl_surface *parentSurface = parentWindow->object();
+
+    if (m_popupSerial == 0)
+        m_popupSerial = inputDevice->serial();
+    ::wl_seat *seat = inputDevice->wl_seat();
+
+    QPoint position = window->geometry().topLeft() - parentWindow->geometry().topLeft();
+    int x = position.x() + parentWindow->frameMargins().left();
+    int y = position.y() + parentWindow->frameMargins().top();
+
+    auto popup = new QWaylandXdgPopupV5(get_xdg_popup(window->object(), parentSurface, seat, m_popupSerial, x, y), window);
+    m_popups.append(window);
+    QObject::connect(popup, &QWaylandXdgPopupV5::destroyed, [this, window](){
+        m_popups.removeOne(window);
+        if (m_popups.empty())
+            m_popupSerial = 0;
+    });
+    return popup;
 }
 
-void QWaylandIviSurface::createExtendedSurface(QWaylandWindow *window)
+void QWaylandXdgShellV5::xdg_shell_ping(uint32_t serial)
 {
-    if (window->display()->windowExtension())
-        m_extendedWindow = new QWaylandExtendedSurface(window);
-}
-
-void QWaylandIviSurface::ivi_surface_configure(int32_t width, int32_t height)
-{
-    m_pendingSize = {width, height};
-    m_window->applyConfigureWhenPossible();
-}
-
-void QWaylandIviSurface::ivi_controller_surface_visibility(int32_t visibility)
-{
-    this->m_window->window()->setVisible(visibility != 0);
+    pong(serial);
 }
 
 }

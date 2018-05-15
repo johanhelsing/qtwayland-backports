@@ -63,7 +63,6 @@
 
 #include <QtWaylandClient/private/qwayland-wayland.h>
 #include <QtWaylandClient/private/qtwaylandclientglobal_p.h>
-#include <QtWaylandClient/private/qwayland-xdg-shell.h>
 #include <QtWaylandClient/private/qwaylandshm_p.h>
 
 struct wl_cursor_image;
@@ -75,11 +74,8 @@ class QSocketNotifier;
 class QPlatformScreen;
 
 namespace QtWayland {
-    class qt_shell;
-    class qt_sub_surface_extension;
     class qt_surface_extension;
     class zwp_text_input_manager_v2;
-    class xdg_shell;
 }
 
 namespace QtWaylandClient {
@@ -95,10 +91,8 @@ class QWaylandDataDeviceManager;
 class QWaylandTouchExtension;
 class QWaylandQtKeyExtension;
 class QWaylandWindow;
-class QWaylandEventThread;
 class QWaylandIntegration;
 class QWaylandHardwareIntegration;
-class QWaylandXdgShell;
 class QWaylandShellSurface;
 
 typedef void (*RegistryListener)(void *data,
@@ -127,8 +121,8 @@ public:
 
     QWaylandWindowManagerIntegration *windowManagerIntegration() const;
 #if QT_CONFIG(cursor)
-    void setCursor(struct wl_buffer *buffer, struct wl_cursor_image *image);
-    void setCursor(const QSharedPointer<QWaylandBuffer> &buffer, const QPoint &hotSpot);
+    void setCursor(struct wl_buffer *buffer, struct wl_cursor_image *image, qreal dpr);
+    void setCursor(const QSharedPointer<QWaylandBuffer> &buffer, const QPoint &hotSpot, qreal dpr);
 #endif
     struct wl_display *wl_display() const { return mDisplay; }
     struct ::wl_registry *wl_registry() { return object(); }
