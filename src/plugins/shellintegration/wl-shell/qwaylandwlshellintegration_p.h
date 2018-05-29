@@ -37,50 +37,43 @@
 **
 ****************************************************************************/
 
-#include "qwaylandwlshellintegration_p.h"
+#ifndef QWAYLANDWLSHELLINTEGRATION_P_H
+#define QWAYLANDWLSHELLINTEGRATION_P_H
 
-#include <QtWaylandClient/private/qwaylandwindow_p.h>
-#include <QtWaylandClient/private/qwaylanddisplay_p.h>
-#include <QtWaylandClient/private/qwaylandwlshellsurface_p.h>
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
+#include <wayland-client.h>
+#include <private/qwayland-wayland.h>
+
+#include <QtWaylandClient/private/qwaylandshellintegration_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-QWaylandWlShellIntegration *QWaylandWlShellIntegration::create(QWaylandDisplay *display)
+class Q_WAYLAND_CLIENT_EXPORT QWaylandWlShellIntegration : public QWaylandShellIntegration
 {
-    if (!display->hasRegistryGlobal(QLatin1String("wl_shell")))
-        return nullptr;
+public:
+    QWaylandWlShellIntegration() {}
+    bool initialize(QWaylandDisplay *) override;
+    QWaylandShellSurface *createShellSurface(QWaylandWindow *window) override;
+    void *nativeResourceForWindow(const QByteArray &resource, QWindow *window) override;
 
-    QScopedPointer<QWaylandWlShellIntegration> integration;
-    integration.reset(new QWaylandWlShellIntegration(display));
-    if (integration && !integration->initialize(display))
-        return nullptr;
-
-    return integration.take();
-}
-
-QWaylandWlShellIntegration::QWaylandWlShellIntegration(QWaylandDisplay *display)
-{
-    Q_FOREACH (QWaylandDisplay::RegistryGlobal global, display->globals()) {
-        if (global.interface == QLatin1String("wl_shell")) {
-            m_wlShell = new QtWayland::wl_shell(display->wl_registry(), global.id, 1);
-            break;
-        }
-    }
-}
-
-bool QWaylandWlShellIntegration::initialize(QWaylandDisplay *display)
-{
-    QWaylandShellIntegration::initialize(display);
-    return m_wlShell != nullptr;
+private:
+    QtWayland::wl_shell *m_wlShell = nullptr;
 };
-
-QWaylandShellSurface *QWaylandWlShellIntegration::createShellSurface(QWaylandWindow *window)
-{
-    return new QWaylandWlShellSurface(m_wlShell->get_shell_surface(window->object()), window);
-}
 
 }
 
 QT_END_NAMESPACE
+
+#endif // QWAYLANDWLSHELLINTEGRATION_P_H

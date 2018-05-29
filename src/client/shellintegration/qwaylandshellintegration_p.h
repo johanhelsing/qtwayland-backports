@@ -79,6 +79,11 @@ public:
         if (oldFocus)
             m_display->handleWindowDeactivated(oldFocus);
     }
+    virtual void *nativeResourceForWindow(const QByteArray &resource, QWindow *window) {
+        Q_UNUSED(resource);
+        Q_UNUSED(window);
+        return nullptr;
+    }
 
 protected:
     QWaylandDisplay *m_display = nullptr;

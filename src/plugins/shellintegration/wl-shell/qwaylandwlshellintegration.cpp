@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
@@ -37,55 +37,51 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDQTKEY_H
-#define QWAYLANDQTKEY_H
+#include "qwaylandwlshellintegration_p.h"
+#include "qwaylandwlshellsurface_p.h"
 
-//
-//  W A R N I N G
-//  -------------
-//
-// This file is not part of the Qt API.  It exists purely as an
-// implementation detail.  This header file may change from version to
-// version without notice, or even be removed.
-//
-// We mean it.
-//
-
-#include <qpa/qwindowsysteminterface.h>
-
-#include <QtWaylandClient/qtwaylandclientglobal.h>
-#include <QtWaylandClient/private/qwayland-qt-key-unstable-v1.h>
+#include <QtWaylandClient/private/qwaylandwindow_p.h>
+#include <QtWaylandClient/private/qwaylanddisplay_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-class QWaylandDisplay;
-
-class Q_WAYLAND_CLIENT_EXPORT QWaylandQtKeyExtension : public QtWayland::zqt_key_v1
+bool QWaylandWlShellIntegration::initialize(QWaylandDisplay *display)
 {
-public:
-    QWaylandQtKeyExtension(QWaylandDisplay *display, uint32_t id);
+    Q_FOREACH (QWaylandDisplay::RegistryGlobal global, display->globals()) {
+        if (global.interface == QLatin1String("wl_shell")) {
+            m_wlShell = new QtWayland::wl_shell(display->wl_registry(), global.id, 1);
+            break;
+        }
+    }
 
-private:
-    QWaylandDisplay *m_display = nullptr;
+    if (!m_wlShell) {
+        qCDebug(lcQpaWayland) << "Couldn't find global wl_shell";
+        return false;
+    }
 
-    void zqt_key_v1_key(struct wl_surface *surface,
-                        uint32_t time,
-                        uint32_t type,
-                        uint32_t key,
-                        uint32_t modifiers,
-                        uint32_t nativeScanCode,
-                        uint32_t nativeVirtualKey,
-                        uint32_t nativeModifiers,
-                        const QString &text,
-                        uint32_t autorep,
-                        uint32_t count) override;
-
-};
-
+    return QWaylandShellIntegration::initialize(display);
 }
 
-QT_END_NAMESPACE
+QWaylandShellSurface *QWaylandWlShellIntegration::createShellSurface(QWaylandWindow *window)
+{
+    return new QWaylandWlShellSurface(m_wlShell->get_shell_surface(window->object()), window);
+}
 
-#endif // QWAYLANDQTKEY_H
+void *QWaylandWlShellIntegration::nativeResourceForWindow(const QByteArray &resource, QWindow *window)
+{
+    QByteArray lowerCaseResource = resource.toLower();
+    if (lowerCaseResource == "wl_shell_surface") {
+        if (auto waylandWindow = static_cast<QWaylandWindow *>(window->handle())) {
+            if (auto shellSurface = qobject_cast<QWaylandWlShellSurface *>(waylandWindow->shellSurface())) {
+                return shellSurface->object();
+            }
+        }
+    }
+    return nullptr;
+}
+
+} // namespace QtWaylandClient
+
+QT_END_NAMESPACE

@@ -38,8 +38,8 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDXDGSHELLV6_H
-#define QWAYLANDXDGSHELLV6_H
+#ifndef QWAYLANDXDGSHELL_H
+#define QWAYLANDXDGSHELL_H
 
 //
 //  W A R N I N G
@@ -52,14 +52,15 @@
 // We mean it.
 //
 
+#include "qwayland-xdg-shell.h"
+
+#include <QtWaylandClient/qtwaylandclientglobal.h>
+#include <QtWaylandClient/private/qwaylandshellsurface_p.h>
+
 #include <QtCore/QSize>
 #include <QtGui/QRegion>
 
 #include <wayland-client.h>
-
-#include <QtWaylandClient/private/qwayland-xdg-shell-unstable-v6.h>
-#include <QtWaylandClient/qtwaylandclientglobal.h>
-#include "qwaylandshellsurface_p.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -69,22 +70,23 @@ namespace QtWaylandClient {
 
 class QWaylandWindow;
 class QWaylandInputDevice;
-class QWaylandXdgShellV6;
+class QWaylandXdgShell;
 
-class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgSurfaceV6 : public QWaylandShellSurface, public QtWayland::zxdg_surface_v6
+class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgSurface : public QWaylandShellSurface, public QtWayland::xdg_surface
 {
     Q_OBJECT
 public:
-    QWaylandXdgSurfaceV6(QWaylandXdgShellV6 *shell, ::zxdg_surface_v6 *surface, QWaylandWindow *window);
-    ~QWaylandXdgSurfaceV6() override;
+    QWaylandXdgSurface(QWaylandXdgShell *shell, ::xdg_surface *surface, QWaylandWindow *window);
+    ~QWaylandXdgSurface() override;
 
-    void resize(QWaylandInputDevice *inputDevice, enum zxdg_toplevel_v6_resize_edge edges);
+    void resize(QWaylandInputDevice *inputDevice, enum xdg_toplevel_resize_edge edges);
     void resize(QWaylandInputDevice *inputDevice, enum wl_shell_surface_resize edges) override;
     bool move(QWaylandInputDevice *inputDevice) override;
     void setTitle(const QString &title) override;
     void setAppId(const QString &appId) override;
 
     void setType(Qt::WindowType type, QWaylandWindow *transientParent) override;
+    bool isExposed() const override { return m_configured; }
     bool handleExpose(const QRegion &) override;
     bool handlesActiveState() const { return m_toplevel; }
     void applyConfigure() override;
@@ -92,19 +94,19 @@ public:
 
 protected:
     void requestWindowStates(Qt::WindowStates states) override;
-    void zxdg_surface_v6_configure(uint32_t serial) override;
+    void xdg_surface_configure(uint32_t serial) override;
 
 private:
-    class Toplevel: public QtWayland::zxdg_toplevel_v6
+    class Toplevel: public QtWayland::xdg_toplevel
     {
     public:
-        Toplevel(QWaylandXdgSurfaceV6 *xdgSurface);
+        Toplevel(QWaylandXdgSurface *xdgSurface);
         ~Toplevel() override;
 
         void applyConfigure();
 
-        void zxdg_toplevel_v6_configure(int32_t width, int32_t height, wl_array *states) override;
-        void zxdg_toplevel_v6_close() override;
+        void xdg_toplevel_configure(int32_t width, int32_t height, wl_array *states) override;
+        void xdg_toplevel_close() override;
 
         void requestWindowStates(Qt::WindowStates states);
         struct {
@@ -113,24 +115,24 @@ private:
         }  m_pending, m_applied;
         QSize m_normalSize;
 
-        QWaylandXdgSurfaceV6 *m_xdgSurface = nullptr;
+        QWaylandXdgSurface *m_xdgSurface = nullptr;
     };
 
-    class Popup : public QtWayland::zxdg_popup_v6 {
+    class Popup : public QtWayland::xdg_popup {
     public:
-        Popup(QWaylandXdgSurfaceV6 *xdgSurface, QWaylandXdgSurfaceV6 *parent, QtWayland::zxdg_positioner_v6 *positioner);
+        Popup(QWaylandXdgSurface *xdgSurface, QWaylandXdgSurface *parent, QtWayland::xdg_positioner *positioner);
         ~Popup() override;
 
         void applyConfigure();
-        void zxdg_popup_v6_popup_done() override;
+        void xdg_popup_popup_done() override;
 
-        QWaylandXdgSurfaceV6 *m_xdgSurface = nullptr;
+        QWaylandXdgSurface *m_xdgSurface = nullptr;
     };
 
     void setToplevel();
     void setPopup(QWaylandWindow *parent, QWaylandInputDevice *device, int serial, bool grab);
 
-    QWaylandXdgShellV6 *m_shell = nullptr;
+    QWaylandXdgShell *m_shell = nullptr;
     QWaylandWindow *m_window = nullptr;
     Toplevel *m_toplevel = nullptr;
     Popup *m_popup = nullptr;
@@ -139,21 +141,21 @@ private:
     uint m_pendingConfigureSerial = 0;
 };
 
-class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShellV6 : public QtWayland::zxdg_shell_v6
+class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShell : public QtWayland::xdg_wm_base
 {
 public:
-    QWaylandXdgShellV6(struct ::wl_registry *registry, uint32_t id, uint32_t availableVersion);
+    QWaylandXdgShell(struct ::wl_registry *registry, uint32_t id, uint32_t availableVersion);
 
-    QWaylandXdgSurfaceV6 *getXdgSurface(QWaylandWindow *window);
+    QWaylandXdgSurface *getXdgSurface(QWaylandWindow *window);
 
-    ~QWaylandXdgShellV6() override;
+    ~QWaylandXdgShell() override;
 
 private:
-    void zxdg_shell_v6_ping(uint32_t serial) override;
+    void xdg_wm_base_ping(uint32_t serial) override;
 };
 
 QT_END_NAMESPACE
 
 }
 
-#endif // QWAYLANDXDGSHELLV6_H
+#endif // QWAYLANDXDGSHELL_H

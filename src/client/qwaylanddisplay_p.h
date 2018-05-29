@@ -80,7 +80,7 @@ namespace QtWayland {
 
 namespace QtWaylandClient {
 
-Q_DECLARE_LOGGING_CATEGORY(lcQpaWayland);
+Q_WAYLAND_CLIENT_EXPORT Q_DECLARE_LOGGING_CATEGORY(lcQpaWayland);
 
 class QWaylandInputDevice;
 class QWaylandBuffer;
@@ -94,6 +94,7 @@ class QWaylandWindow;
 class QWaylandIntegration;
 class QWaylandHardwareIntegration;
 class QWaylandShellSurface;
+class QWaylandCursorTheme;
 
 typedef void (*RegistryListener)(void *data,
                                  struct wl_registry *registry,
@@ -123,6 +124,7 @@ public:
 #if QT_CONFIG(cursor)
     void setCursor(struct wl_buffer *buffer, struct wl_cursor_image *image, qreal dpr);
     void setCursor(const QSharedPointer<QWaylandBuffer> &buffer, const QPoint &hotSpot, qreal dpr);
+    QWaylandCursorTheme *loadCursorTheme(qreal devicePixelRatio);
 #endif
     struct wl_display *wl_display() const { return mDisplay; }
     struct ::wl_registry *wl_registry() { return object(); }
@@ -199,6 +201,9 @@ private:
     QList<QWaylandInputDevice *> mInputDevices;
     QList<Listener> mRegistryListeners;
     QWaylandIntegration *mWaylandIntegration = nullptr;
+#if QT_CONFIG(cursor)
+    QMap<int, QWaylandCursorTheme *> mCursorThemesBySize;
+#endif
 #if QT_CONFIG(wayland_datadevice)
     QScopedPointer<QWaylandDataDeviceManager> mDndSelectionHandler;
 #endif

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
@@ -37,8 +37,8 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDQTKEY_H
-#define QWAYLANDQTKEY_H
+#ifndef QWAYLANDXDGSHELLINTEGRATION_P_H
+#define QWAYLANDXDGSHELLINTEGRATION_P_H
 
 //
 //  W A R N I N G
@@ -51,41 +51,28 @@
 // We mean it.
 //
 
-#include <qpa/qwindowsysteminterface.h>
+#include "qwaylandxdgshell_p.h"
 
-#include <QtWaylandClient/qtwaylandclientglobal.h>
-#include <QtWaylandClient/private/qwayland-qt-key-unstable-v1.h>
+#include <QtWaylandClient/private/qwaylandshellintegration_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-class QWaylandDisplay;
-
-class Q_WAYLAND_CLIENT_EXPORT QWaylandQtKeyExtension : public QtWayland::zqt_key_v1
+class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShellIntegration : public QWaylandShellIntegration
 {
 public:
-    QWaylandQtKeyExtension(QWaylandDisplay *display, uint32_t id);
+    QWaylandXdgShellIntegration() {}
+    bool initialize(QWaylandDisplay *display) override;
+    QWaylandShellSurface *createShellSurface(QWaylandWindow *window) override;
+    void handleKeyboardFocusChanged(QWaylandWindow *newFocus, QWaylandWindow *oldFocus) override;
 
 private:
-    QWaylandDisplay *m_display = nullptr;
-
-    void zqt_key_v1_key(struct wl_surface *surface,
-                        uint32_t time,
-                        uint32_t type,
-                        uint32_t key,
-                        uint32_t modifiers,
-                        uint32_t nativeScanCode,
-                        uint32_t nativeVirtualKey,
-                        uint32_t nativeModifiers,
-                        const QString &text,
-                        uint32_t autorep,
-                        uint32_t count) override;
-
+    QScopedPointer<QWaylandXdgShell> m_xdgShell;
 };
 
 }
 
 QT_END_NAMESPACE
 
-#endif // QWAYLANDQTKEY_H
+#endif // QWAYLANDXDGSHELLINTEGRATION_P_H

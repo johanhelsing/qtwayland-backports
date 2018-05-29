@@ -38,26 +38,26 @@
 **
 ****************************************************************************/
 
-#include "qwaylandxdgshellv6_p.h"
+#include "qwaylandxdgshell_p.h"
 
-#include "qwaylanddisplay_p.h"
-#include "qwaylandwindow_p.h"
-#include "qwaylandinputdevice_p.h"
-#include "qwaylandscreen_p.h"
-#include "qwaylandabstractdecoration_p.h"
+#include <QtWaylandClient/private/qwaylanddisplay_p.h>
+#include <QtWaylandClient/private/qwaylandwindow_p.h>
+#include <QtWaylandClient/private/qwaylandinputdevice_p.h>
+#include <QtWaylandClient/private/qwaylandscreen_p.h>
+#include <QtWaylandClient/private/qwaylandabstractdecoration_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-QWaylandXdgSurfaceV6::Toplevel::Toplevel(QWaylandXdgSurfaceV6 *xdgSurface)
-    : QtWayland::zxdg_toplevel_v6(xdgSurface->get_toplevel())
+QWaylandXdgSurface::Toplevel::Toplevel(QWaylandXdgSurface *xdgSurface)
+    : QtWayland::xdg_toplevel(xdgSurface->get_toplevel())
     , m_xdgSurface(xdgSurface)
 {
     requestWindowStates(xdgSurface->window()->window()->windowStates());
 }
 
-QWaylandXdgSurfaceV6::Toplevel::~Toplevel()
+QWaylandXdgSurface::Toplevel::~Toplevel()
 {
     if (m_applied.states & Qt::WindowActive) {
         QWaylandWindow *window = m_xdgSurface->window();
@@ -67,7 +67,7 @@ QWaylandXdgSurfaceV6::Toplevel::~Toplevel()
         destroy();
 }
 
-void QWaylandXdgSurfaceV6::Toplevel::applyConfigure()
+void QWaylandXdgSurface::Toplevel::applyConfigure()
 {
     if (!(m_applied.states & (Qt::WindowMaximized|Qt::WindowFullScreen)))
         m_normalSize = m_xdgSurface->m_window->window()->frameGeometry().size();
@@ -89,7 +89,7 @@ void QWaylandXdgSurfaceV6::Toplevel::applyConfigure()
     m_applied = m_pending;
 }
 
-void QWaylandXdgSurfaceV6::Toplevel::zxdg_toplevel_v6_configure(int32_t width, int32_t height, wl_array *states)
+void QWaylandXdgSurface::Toplevel::xdg_toplevel_configure(int32_t width, int32_t height, wl_array *states)
 {
     m_pending.size = QSize(width, height);
 
@@ -100,13 +100,13 @@ void QWaylandXdgSurfaceV6::Toplevel::zxdg_toplevel_v6_configure(int32_t width, i
 
     for (size_t i = 0; i < numStates; i++) {
         switch (xdgStates[i]) {
-        case ZXDG_TOPLEVEL_V6_STATE_ACTIVATED:
+        case XDG_TOPLEVEL_STATE_ACTIVATED:
             m_pending.states |= Qt::WindowActive;
             break;
-        case ZXDG_TOPLEVEL_V6_STATE_MAXIMIZED:
+        case XDG_TOPLEVEL_STATE_MAXIMIZED:
             m_pending.states |= Qt::WindowMaximized;
             break;
-        case ZXDG_TOPLEVEL_V6_STATE_FULLSCREEN:
+        case XDG_TOPLEVEL_STATE_FULLSCREEN:
             m_pending.states |= Qt::WindowFullScreen;
             break;
         default:
@@ -115,12 +115,12 @@ void QWaylandXdgSurfaceV6::Toplevel::zxdg_toplevel_v6_configure(int32_t width, i
     }
 }
 
-void QWaylandXdgSurfaceV6::Toplevel::zxdg_toplevel_v6_close()
+void QWaylandXdgSurface::Toplevel::xdg_toplevel_close()
 {
     m_xdgSurface->m_window->window()->close();
 }
 
-void QWaylandXdgSurfaceV6::Toplevel::requestWindowStates(Qt::WindowStates states)
+void QWaylandXdgSurface::Toplevel::requestWindowStates(Qt::WindowStates states)
 {
     // Re-send what's different from the applied state
     Qt::WindowStates changedStates = m_applied.states ^ states;
@@ -146,59 +146,59 @@ void QWaylandXdgSurfaceV6::Toplevel::requestWindowStates(Qt::WindowStates states
     }
 }
 
-QWaylandXdgSurfaceV6::Popup::Popup(QWaylandXdgSurfaceV6 *xdgSurface, QWaylandXdgSurfaceV6 *parent,
-                                   QtWayland::zxdg_positioner_v6 *positioner)
-    : zxdg_popup_v6(xdgSurface->get_popup(parent->object(), positioner->object()))
+QWaylandXdgSurface::Popup::Popup(QWaylandXdgSurface *xdgSurface, QWaylandXdgSurface *parent,
+                                 QtWayland::xdg_positioner *positioner)
+    : xdg_popup(xdgSurface->get_popup(parent->object(), positioner->object()))
     , m_xdgSurface(xdgSurface)
 {
 }
 
-QWaylandXdgSurfaceV6::Popup::~Popup()
+QWaylandXdgSurface::Popup::~Popup()
 {
     if (isInitialized())
         destroy();
 }
 
-void QWaylandXdgSurfaceV6::Popup::applyConfigure()
+void QWaylandXdgSurface::Popup::applyConfigure()
 {
 }
 
-void QWaylandXdgSurfaceV6::Popup::zxdg_popup_v6_popup_done()
+void QWaylandXdgSurface::Popup::xdg_popup_popup_done()
 {
     m_xdgSurface->m_window->window()->close();
 }
 
-QWaylandXdgSurfaceV6::QWaylandXdgSurfaceV6(QWaylandXdgShellV6 *shell, ::zxdg_surface_v6 *surface, QWaylandWindow *window)
-                    : QWaylandShellSurface(window)
-                    , zxdg_surface_v6(surface)
-                    , m_shell(shell)
-                    , m_window(window)
+QWaylandXdgSurface::QWaylandXdgSurface(QWaylandXdgShell *shell, ::xdg_surface *surface, QWaylandWindow *window)
+    : QWaylandShellSurface(window)
+    , xdg_surface(surface)
+    , m_shell(shell)
+    , m_window(window)
 {
 }
 
-QWaylandXdgSurfaceV6::~QWaylandXdgSurfaceV6()
+QWaylandXdgSurface::~QWaylandXdgSurface()
 {
     if (m_toplevel)
-        zxdg_toplevel_v6_destroy(m_toplevel->object());
+        xdg_toplevel_destroy(m_toplevel->object());
     if (m_popup)
-        zxdg_popup_v6_destroy(m_popup->object());
+        xdg_popup_destroy(m_popup->object());
     destroy();
 }
 
-void QWaylandXdgSurfaceV6::resize(QWaylandInputDevice *inputDevice, zxdg_toplevel_v6_resize_edge edges)
+void QWaylandXdgSurface::resize(QWaylandInputDevice *inputDevice, xdg_toplevel_resize_edge edges)
 {
     Q_ASSERT(m_toplevel && m_toplevel->isInitialized());
     m_toplevel->resize(inputDevice->wl_seat(), inputDevice->serial(), edges);
 }
 
-void QWaylandXdgSurfaceV6::resize(QWaylandInputDevice *inputDevice, enum wl_shell_surface_resize edges)
+void QWaylandXdgSurface::resize(QWaylandInputDevice *inputDevice, enum wl_shell_surface_resize edges)
 {
-    auto xdgEdges = reinterpret_cast<enum zxdg_toplevel_v6_resize_edge const * const>(&edges);
+    auto xdgEdges = reinterpret_cast<enum xdg_toplevel_resize_edge const * const>(&edges);
     resize(inputDevice, *xdgEdges);
 }
 
 
-bool QWaylandXdgSurfaceV6::move(QWaylandInputDevice *inputDevice)
+bool QWaylandXdgSurface::move(QWaylandInputDevice *inputDevice)
 {
     if (m_toplevel && m_toplevel->isInitialized()) {
         m_toplevel->move(inputDevice->wl_seat(), inputDevice->serial());
@@ -207,19 +207,19 @@ bool QWaylandXdgSurfaceV6::move(QWaylandInputDevice *inputDevice)
     return false;
 }
 
-void QWaylandXdgSurfaceV6::setTitle(const QString &title)
+void QWaylandXdgSurface::setTitle(const QString &title)
 {
     if (m_toplevel)
         m_toplevel->set_title(title);
 }
 
-void QWaylandXdgSurfaceV6::setAppId(const QString &appId)
+void QWaylandXdgSurface::setAppId(const QString &appId)
 {
     if (m_toplevel)
         m_toplevel->set_app_id(appId);
 }
 
-void QWaylandXdgSurfaceV6::setType(Qt::WindowType type, QWaylandWindow *transientParent)
+void QWaylandXdgSurface::setType(Qt::WindowType type, QWaylandWindow *transientParent)
 {
     QWaylandDisplay *display = m_window->display();
     if ((type == Qt::Popup || type == Qt::ToolTip) && transientParent && display->lastInputDevice()) {
@@ -227,14 +227,14 @@ void QWaylandXdgSurfaceV6::setType(Qt::WindowType type, QWaylandWindow *transien
     } else {
         setToplevel();
         if (transientParent) {
-            auto parentXdgSurface = static_cast<QWaylandXdgSurfaceV6 *>(transientParent->shellSurface());
+            auto parentXdgSurface = static_cast<QWaylandXdgSurface *>(transientParent->shellSurface());
             if (parentXdgSurface)
                 m_toplevel->set_parent(parentXdgSurface->m_toplevel->object());
         }
     }
 }
 
-bool QWaylandXdgSurfaceV6::handleExpose(const QRegion &region)
+bool QWaylandXdgSurface::handleExpose(const QRegion &region)
 {
     if (!m_configured && !region.isEmpty()) {
         m_exposeRegion = region;
@@ -243,7 +243,7 @@ bool QWaylandXdgSurfaceV6::handleExpose(const QRegion &region)
     return false;
 }
 
-void QWaylandXdgSurfaceV6::applyConfigure()
+void QWaylandXdgSurface::applyConfigure()
 {
     Q_ASSERT(m_pendingConfigureSerial != 0);
 
@@ -258,12 +258,12 @@ void QWaylandXdgSurfaceV6::applyConfigure()
     m_pendingConfigureSerial = 0;
 }
 
-bool QWaylandXdgSurfaceV6::wantsDecorations() const
+bool QWaylandXdgSurface::wantsDecorations() const
 {
     return m_toplevel && !(m_toplevel->m_pending.states & Qt::WindowFullScreen);
 }
 
-void QWaylandXdgSurfaceV6::requestWindowStates(Qt::WindowStates states)
+void QWaylandXdgSurface::requestWindowStates(Qt::WindowStates states)
 {
     if (m_toplevel)
         m_toplevel->requestWindowStates(states);
@@ -271,18 +271,18 @@ void QWaylandXdgSurfaceV6::requestWindowStates(Qt::WindowStates states)
         qCWarning(lcQpaWayland) << "Non-toplevel surfaces can't request window states";
 }
 
-void QWaylandXdgSurfaceV6::setToplevel()
+void QWaylandXdgSurface::setToplevel()
 {
     Q_ASSERT(!m_toplevel && !m_popup);
     m_toplevel = new Toplevel(this);
 }
 
-void QWaylandXdgSurfaceV6::setPopup(QWaylandWindow *parent, QWaylandInputDevice *device, int serial, bool grab)
+void QWaylandXdgSurface::setPopup(QWaylandWindow *parent, QWaylandInputDevice *device, int serial, bool grab)
 {
     Q_ASSERT(!m_toplevel && !m_popup);
 
-    auto parentXdgSurface = static_cast<QWaylandXdgSurfaceV6 *>(parent->shellSurface());
-    auto positioner = new QtWayland::zxdg_positioner_v6(m_shell->create_positioner());
+    auto parentXdgSurface = static_cast<QWaylandXdgSurface *>(parent->shellSurface());
+    auto positioner = new QtWayland::xdg_positioner(m_shell->create_positioner());
     // set_popup expects a position relative to the parent
     QPoint transientPos = m_window->geometry().topLeft(); // this is absolute
     transientPos -= parent->geometry().topLeft();
@@ -291,8 +291,8 @@ void QWaylandXdgSurfaceV6::setPopup(QWaylandWindow *parent, QWaylandInputDevice 
         transientPos.setY(transientPos.y() + parent->decoration()->margins().top());
     }
     positioner->set_anchor_rect(transientPos.x(), transientPos.y(), 1, 1);
-    positioner->set_anchor(QtWayland::zxdg_positioner_v6::anchor_top | QtWayland::zxdg_positioner_v6::anchor_left);
-    positioner->set_gravity(QtWayland::zxdg_positioner_v6::gravity_bottom | QtWayland::zxdg_positioner_v6::gravity_right);
+    positioner->set_anchor(QtWayland::xdg_positioner::anchor_top_left);
+    positioner->set_gravity(QtWayland::xdg_positioner::gravity_bottom_right);
     positioner->set_size(m_window->geometry().width(), m_window->geometry().height());
     m_popup = new Popup(this, parentXdgSurface, positioner);
     positioner->destroy();
@@ -302,7 +302,7 @@ void QWaylandXdgSurfaceV6::setPopup(QWaylandWindow *parent, QWaylandInputDevice 
     }
 }
 
-void QWaylandXdgSurfaceV6::zxdg_surface_v6_configure(uint32_t serial)
+void QWaylandXdgSurface::xdg_surface_configure(uint32_t serial)
 {
     m_window->applyConfigureWhenPossible();
     m_pendingConfigureSerial = serial;
@@ -312,22 +312,22 @@ void QWaylandXdgSurfaceV6::zxdg_surface_v6_configure(uint32_t serial)
     }
 }
 
-QWaylandXdgShellV6::QWaylandXdgShellV6(struct ::wl_registry *registry, uint32_t id, uint32_t availableVersion)
-                  : QtWayland::zxdg_shell_v6(registry, id, qMin(availableVersion, 1u))
+QWaylandXdgShell::QWaylandXdgShell(struct ::wl_registry *registry, uint32_t id, uint32_t availableVersion)
+    : QtWayland::xdg_wm_base(registry, id, qMin(availableVersion, 1u))
 {
 }
 
-QWaylandXdgShellV6::~QWaylandXdgShellV6()
+QWaylandXdgShell::~QWaylandXdgShell()
 {
     destroy();
 }
 
-QWaylandXdgSurfaceV6 *QWaylandXdgShellV6::getXdgSurface(QWaylandWindow *window)
+QWaylandXdgSurface *QWaylandXdgShell::getXdgSurface(QWaylandWindow *window)
 {
-    return new QWaylandXdgSurfaceV6(this, get_xdg_surface(window->object()), window);
+    return new QWaylandXdgSurface(this, get_xdg_surface(window->object()), window);
 }
 
-void QWaylandXdgShellV6::zxdg_shell_v6_ping(uint32_t serial)
+void QWaylandXdgShell::xdg_wm_base_ping(uint32_t serial)
 {
     pong(serial);
 }

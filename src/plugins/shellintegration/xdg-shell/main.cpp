@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2018 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
@@ -37,55 +37,32 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDQTKEY_H
-#define QWAYLANDQTKEY_H
+#include "qwaylandxdgshellintegration_p.h"
 
-//
-//  W A R N I N G
-//  -------------
-//
-// This file is not part of the Qt API.  It exists purely as an
-// implementation detail.  This header file may change from version to
-// version without notice, or even be removed.
-//
-// We mean it.
-//
-
-#include <qpa/qwindowsysteminterface.h>
-
-#include <QtWaylandClient/qtwaylandclientglobal.h>
-#include <QtWaylandClient/private/qwayland-qt-key-unstable-v1.h>
+#include <QtWaylandClient/private/qwaylandshellintegrationplugin_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-class QWaylandDisplay;
-
-class Q_WAYLAND_CLIENT_EXPORT QWaylandQtKeyExtension : public QtWayland::zqt_key_v1
+class QWaylandXdgShellIntegrationPlugin : public QWaylandShellIntegrationPlugin
 {
+    Q_OBJECT
+    Q_PLUGIN_METADATA(IID QWaylandShellIntegrationFactoryInterface_iid FILE "xdg-shell.json")
+
 public:
-    QWaylandQtKeyExtension(QWaylandDisplay *display, uint32_t id);
-
-private:
-    QWaylandDisplay *m_display = nullptr;
-
-    void zqt_key_v1_key(struct wl_surface *surface,
-                        uint32_t time,
-                        uint32_t type,
-                        uint32_t key,
-                        uint32_t modifiers,
-                        uint32_t nativeScanCode,
-                        uint32_t nativeVirtualKey,
-                        uint32_t nativeModifiers,
-                        const QString &text,
-                        uint32_t autorep,
-                        uint32_t count) override;
-
+    QWaylandShellIntegration *create(const QString &key, const QStringList &paramList) override;
 };
+
+QWaylandShellIntegration *QWaylandXdgShellIntegrationPlugin::create(const QString &key, const QStringList &paramList)
+{
+    Q_UNUSED(key);
+    Q_UNUSED(paramList);
+    return new QWaylandXdgShellIntegration();
+}
 
 }
 
 QT_END_NAMESPACE
 
-#endif // QWAYLANDQTKEY_H
+#include "main.moc"
