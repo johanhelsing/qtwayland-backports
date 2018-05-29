@@ -77,19 +77,15 @@ void QWaylandDrag::cancel()
     m_display->currentInputDevice()->dataDevice()->cancelDrag();
 }
 
-void QWaylandDrag::move(const QPoint &globalPos, Qt::MouseButtons b, Qt::KeyboardModifiers mods)
+void QWaylandDrag::move(const QPoint &globalPos)
 {
     Q_UNUSED(globalPos);
-    Q_UNUSED(b);
-    Q_UNUSED(mods);
     // Do nothing
 }
 
-void QWaylandDrag::drop(const QPoint &globalPos, Qt::MouseButtons b, Qt::KeyboardModifiers mods)
+void QWaylandDrag::drop(const QPoint &globalPos)
 {
     Q_UNUSED(globalPos);
-    Q_UNUSED(b);
-    Q_UNUSED(mods);
     // Do nothing
 }
 
