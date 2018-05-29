@@ -50,10 +50,10 @@
 #if QT_CONFIG(wayland_datadevice)
 #include "qwaylanddatadevicemanager_p.h"
 #endif
+#if QT_CONFIG(cursor)
+#include <wayland-cursor.h>
+#endif
 #include "qwaylandhardwareintegration_p.h"
-#include "qwaylandxdgshell_p.h"
-#include "qwaylandxdgsurface_p.h"
-#include "qwaylandwlshellsurface_p.h"
 #include "qwaylandinputcontext_p.h"
 
 #include "qwaylandwindowmanagerintegration_p.h"
@@ -66,7 +66,6 @@
 #include "qwaylandqtkey_p.h"
 
 #include <QtWaylandClient/private/qwayland-text-input-unstable-v2.h>
-#include <QtWaylandClient/private/qwayland-xdg-shell.h>
 
 #include <QtCore/QAbstractEventDispatcher>
 #include <QtGui/private/qguiapplication_p.h>
@@ -155,8 +154,12 @@ QWaylandDisplay::~QWaylandDisplay(void)
         mWaylandIntegration->destroyScreen(screen);
     }
     mScreens.clear();
+
 #if QT_CONFIG(wayland_datadevice)
     delete mDndSelectionHandler.take();
+#endif
+#if QT_CONFIG(cursor)
+    qDeleteAll(mCursorThemesBySize);
 #endif
     if (mDisplay)
         wl_display_disconnect(mDisplay);
@@ -241,7 +244,6 @@ void QWaylandDisplay::registry_global(uint32_t id, const QString &interface, uin
         mScreens.append(screen);
         // We need to get the output events before creating surfaces
         forceRoundTrip();
-        screen->init();
         mWaylandIntegration->screenAdded(screen);
     } else if (interface == QStringLiteral("wl_compositor")) {
         mCompositorVersion = qMin((int)version, 3);
@@ -261,7 +263,7 @@ void QWaylandDisplay::registry_global(uint32_t id, const QString &interface, uin
         mSubCompositor.reset(new QtWayland::wl_subcompositor(registry, id, 1));
     } else if (interface == QStringLiteral("qt_touch_extension")) {
         mTouchExtension.reset(new QWaylandTouchExtension(this, id));
-    } else if (interface == QStringLiteral("qt_key_extension")) {
+    } else if (interface == QStringLiteral("zqt_key_v1")) {
         mQtKeyExtension.reset(new QWaylandQtKeyExtension(this, id));
     } else if (interface == QStringLiteral("zwp_text_input_manager_v2")) {
         mTextInputManager.reset(new QtWayland::zwp_text_input_manager_v2(registry, id, 1));
@@ -477,25 +479,46 @@ QWaylandInputDevice *QWaylandDisplay::defaultInputDevice() const
 }
 
 #if QT_CONFIG(cursor)
-void QWaylandDisplay::setCursor(struct wl_buffer *buffer, struct wl_cursor_image *image)
+
+void QWaylandDisplay::setCursor(struct wl_buffer *buffer, struct wl_cursor_image *image, qreal dpr)
 {
     /* Qt doesn't tell us which input device we should set the cursor
      * for, so set it for all devices. */
     for (int i = 0; i < mInputDevices.count(); i++) {
         QWaylandInputDevice *inputDevice = mInputDevices.at(i);
-        inputDevice->setCursor(buffer, image);
+        inputDevice->setCursor(buffer, image, dpr);
     }
 }
 
-void QWaylandDisplay::setCursor(const QSharedPointer<QWaylandBuffer> &buffer, const QPoint &hotSpot)
+void QWaylandDisplay::setCursor(const QSharedPointer<QWaylandBuffer> &buffer, const QPoint &hotSpot, qreal dpr)
 {
     /* Qt doesn't tell us which input device we should set the cursor
      * for, so set it for all devices. */
     for (int i = 0; i < mInputDevices.count(); i++) {
         QWaylandInputDevice *inputDevice = mInputDevices.at(i);
-        inputDevice->setCursor(buffer, hotSpot);
+        inputDevice->setCursor(buffer, hotSpot, dpr);
     }
 }
+
+QWaylandCursorTheme *QWaylandDisplay::loadCursorTheme(qreal devicePixelRatio)
+{
+    static int cursorSize = qEnvironmentVariableIntValue("XCURSOR_SIZE");
+    if (cursorSize <= 0)
+        cursorSize = 32;
+    if (compositorVersion() >= 3) // set_buffer_scale is not supported on earlier versions
+        cursorSize *= devicePixelRatio;
+
+    if (auto *theme = mCursorThemesBySize.value(cursorSize, nullptr))
+        return theme;
+
+    if (auto *theme = QWaylandCursorTheme::create(shm(), cursorSize)) {
+        mCursorThemesBySize[cursorSize] = theme;
+        return theme;
+    }
+
+    return nullptr;
+}
+
 #endif // QT_CONFIG(cursor)
 
 }

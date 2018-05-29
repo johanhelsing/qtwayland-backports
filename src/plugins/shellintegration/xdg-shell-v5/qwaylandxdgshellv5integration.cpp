@@ -37,44 +37,51 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDWLSHELLINTEGRATION_P_H
-#define QWAYLANDWLSHELLINTEGRATION_P_H
+#include "qwaylandxdgshellv5integration_p.h"
+#include "qwaylandxdgsurfacev5_p.h"
+#include "qwaylandxdgpopupv5_p.h"
+#include "qwaylandxdgshellv5_p.h"
 
-//
-//  W A R N I N G
-//  -------------
-//
-// This file is not part of the Qt API.  It exists purely as an
-// implementation detail.  This header file may change from version to
-// version without notice, or even be removed.
-//
-// We mean it.
-//
-
-#include <wayland-client.h>
-#include <private/qwayland-wayland.h>
-
-#include <QtWaylandClient/private/qwaylandshellintegration_p.h>
+#include <QtWaylandClient/private/qwaylandwindow_p.h>
+#include <QtWaylandClient/private/qwaylanddisplay_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-class Q_WAYLAND_CLIENT_EXPORT QWaylandWlShellIntegration : public QWaylandShellIntegration
+bool QWaylandXdgShellV5Integration::initialize(QWaylandDisplay *display)
 {
-public:
-    static QWaylandWlShellIntegration *create(QWaylandDisplay* display);
-    bool initialize(QWaylandDisplay *) override;
-    QWaylandShellSurface *createShellSurface(QWaylandWindow *window) override;
+    Q_FOREACH (QWaylandDisplay::RegistryGlobal global, display->globals()) {
+        if (global.interface == QLatin1String("xdg_shell")) {
+            m_xdgShell.reset(new QWaylandXdgShellV5(display->wl_registry(), global.id));
+            break;
+        }
+    }
 
-private:
-    QWaylandWlShellIntegration(QWaylandDisplay* display);
+    if (!m_xdgShell) {
+        qWarning() << "Couldn't find global xdg_shell for xdg-shell unstable v5";
+        return false;
+    }
 
-    QtWayland::wl_shell *m_wlShell = nullptr;
-};
+    return QWaylandShellIntegration::initialize(display);
+}
+
+QWaylandShellSurface *QWaylandXdgShellV5Integration::createShellSurface(QWaylandWindow *window)
+{
+    QWaylandInputDevice *inputDevice = window->display()->lastInputDevice();
+    if (window->window()->type() == Qt::WindowType::Popup && inputDevice)
+        return m_xdgShell->createXdgPopup(window, inputDevice);
+    else
+        return m_xdgShell->createXdgSurface(window);
+}
+
+void QWaylandXdgShellV5Integration::handleKeyboardFocusChanged(QWaylandWindow *newFocus, QWaylandWindow *oldFocus) {
+    if (newFocus && qobject_cast<QWaylandXdgPopupV5 *>(newFocus->shellSurface()))
+        m_display->handleWindowActivated(newFocus);
+    if (oldFocus && qobject_cast<QWaylandXdgPopupV5 *>(oldFocus->shellSurface()))
+        m_display->handleWindowDeactivated(oldFocus);
+}
 
 }
 
 QT_END_NAMESPACE
-
-#endif // QWAYLANDWLSHELLINTEGRATION_P_H

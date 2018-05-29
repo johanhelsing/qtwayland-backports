@@ -1,6 +1,7 @@
 /****************************************************************************
 **
-** Copyright (C) 2017 The Qt Company Ltd.
+** Copyright (C) 2018 The Qt Company Ltd.
+** Copyright (C) 2017 ITAGE Corporation, author: <yusuke.binsaki@itage.co.jp>
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the plugins of the Qt Toolkit.
@@ -37,46 +38,32 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDXDGSHELLINTEGRATION_P_H
-#define QWAYLANDXDGSHELLINTEGRATION_P_H
+#include "qwaylandwlshellintegration_p.h"
 
-//
-//  W A R N I N G
-//  -------------
-//
-// This file is not part of the Qt API.  It exists purely as an
-// implementation detail.  This header file may change from version to
-// version without notice, or even be removed.
-//
-// We mean it.
-//
-
-#include <wayland-client.h>
-
-#include <QtWaylandClient/private/qwaylandshellintegration_p.h>
+#include <QtWaylandClient/private/qwaylandshellintegrationplugin_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-class QWaylandXdgShell;
-
-class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShellIntegration : public QWaylandShellIntegration
+class QWaylandWlShellIntegrationPlugin : public QWaylandShellIntegrationPlugin
 {
+    Q_OBJECT
+    Q_PLUGIN_METADATA(IID QWaylandShellIntegrationFactoryInterface_iid FILE "wl-shell.json")
+
 public:
-    static QWaylandXdgShellIntegration *create(QWaylandDisplay* display);
-    bool initialize(QWaylandDisplay *display) override;
-    QWaylandShellSurface *createShellSurface(QWaylandWindow *window) override;
-    void handleKeyboardFocusChanged(QWaylandWindow *newFocus, QWaylandWindow *oldFocus) override;
-
-private:
-    QWaylandXdgShellIntegration(QWaylandDisplay *display);
-
-    QWaylandXdgShell *m_xdgShell = nullptr;
+    QWaylandShellIntegration *create(const QString &key, const QStringList &paramList) override;
 };
+
+QWaylandShellIntegration *QWaylandWlShellIntegrationPlugin::create(const QString &key, const QStringList &paramList)
+{
+    Q_UNUSED(key);
+    Q_UNUSED(paramList);
+    return new QWaylandWlShellIntegration();
+}
 
 }
 
 QT_END_NAMESPACE
 
-#endif // QWAYLANDXDGSHELLINTEGRATION_P_H
+#include "main.moc"

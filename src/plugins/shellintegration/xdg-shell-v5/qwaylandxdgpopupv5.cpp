@@ -37,42 +37,40 @@
 **
 ****************************************************************************/
 
-#include "qwaylandwlshellintegration_p.h"
+#include "qwaylandxdgpopupv5_p.h"
 
-#include <QtWaylandClient/private/qwaylandwindow_p.h>
 #include <QtWaylandClient/private/qwaylanddisplay_p.h>
-#include <QtWaylandClient/private/qwaylandwlshellsurface_p.h>
+#include <QtWaylandClient/private/qwaylandwindow_p.h>
+#include <QtWaylandClient/private/qwaylandextendedsurface_p.h>
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-QWaylandWlShellIntegration *QWaylandWlShellIntegration::create(QWaylandDisplay *display)
+QWaylandXdgPopupV5::QWaylandXdgPopupV5(struct ::xdg_popup *popup, QWaylandWindow *window)
+    : QWaylandShellSurface(window)
+    , QtWayland::xdg_popup(popup)
+    , m_window(window)
 {
-    if (display->hasRegistryGlobal(QLatin1String("wl_shell")))
-        return new QWaylandWlShellIntegration(display);
-    return nullptr;
+    if (window->display()->windowExtension())
+        m_extendedWindow = new QWaylandExtendedSurface(window);
 }
 
-QWaylandWlShellIntegration::QWaylandWlShellIntegration(QWaylandDisplay *display)
+QWaylandXdgPopupV5::~QWaylandXdgPopupV5()
 {
-    Q_FOREACH (QWaylandDisplay::RegistryGlobal global, display->globals()) {
-        if (global.interface == QLatin1String("wl_shell")) {
-            m_wlShell = new QtWayland::wl_shell(display->wl_registry(), global.id, 1);
-            break;
-        }
-    }
+    xdg_popup_destroy(object());
+    delete m_extendedWindow;
 }
 
-bool QWaylandWlShellIntegration::initialize(QWaylandDisplay *display)
+void QWaylandXdgPopupV5::setType(Qt::WindowType type, QWaylandWindow *transientParent)
 {
-    QWaylandShellIntegration::initialize(display);
-    return m_wlShell != nullptr;
-};
+    Q_UNUSED(type);
+    Q_UNUSED(transientParent);
+}
 
-QWaylandShellSurface *QWaylandWlShellIntegration::createShellSurface(QWaylandWindow *window)
+void QWaylandXdgPopupV5::xdg_popup_popup_done()
 {
-    return new QWaylandWlShellSurface(m_wlShell->get_shell_surface(window->object()), window);
+    m_window->window()->close();
 }
 
 }

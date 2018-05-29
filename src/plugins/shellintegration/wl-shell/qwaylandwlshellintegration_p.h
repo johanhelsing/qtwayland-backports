@@ -37,8 +37,8 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDXDGSHELLV6INTEGRATION_P_H
-#define QWAYLANDXDGSHELLV6INTEGRATION_P_H
+#ifndef QWAYLANDWLSHELLINTEGRATION_P_H
+#define QWAYLANDWLSHELLINTEGRATION_P_H
 
 //
 //  W A R N I N G
@@ -52,6 +52,7 @@
 //
 
 #include <wayland-client.h>
+#include <private/qwayland-wayland.h>
 
 #include <QtWaylandClient/private/qwaylandshellintegration_p.h>
 
@@ -59,23 +60,20 @@ QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-class QWaylandXdgShellV6;
-
-class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgShellV6Integration : public QWaylandShellIntegration
+class Q_WAYLAND_CLIENT_EXPORT QWaylandWlShellIntegration : public QWaylandShellIntegration
 {
 public:
-    static QWaylandXdgShellV6Integration *create(QWaylandDisplay* display);
-    bool initialize(QWaylandDisplay *display) override;
+    QWaylandWlShellIntegration() {}
+    bool initialize(QWaylandDisplay *) override;
     QWaylandShellSurface *createShellSurface(QWaylandWindow *window) override;
+    void *nativeResourceForWindow(const QByteArray &resource, QWindow *window) override;
 
 private:
-    QWaylandXdgShellV6Integration(QWaylandDisplay *display);
-
-    QWaylandXdgShellV6 *m_xdgShell = nullptr;
+    QtWayland::wl_shell *m_wlShell = nullptr;
 };
 
 }
 
 QT_END_NAMESPACE
 
-#endif // QWAYLANDXDGSHELLV6INTEGRATION_P_H
+#endif // QWAYLANDWLSHELLINTEGRATION_P_H

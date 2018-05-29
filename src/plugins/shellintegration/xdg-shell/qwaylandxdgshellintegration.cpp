@@ -3,7 +3,7 @@
 ** Copyright (C) 2017 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the config.tests of the Qt Toolkit.
+** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -37,55 +37,51 @@
 **
 ****************************************************************************/
 
-#ifndef QWAYLANDXDGPOPUP_P_H
-#define QWAYLANDXDGPOPUP_P_H
+#include "qwaylandxdgshellintegration_p.h"
 
-//
-//  W A R N I N G
-//  -------------
-//
-// This file is not part of the Qt API.  It exists purely as an
-// implementation detail.  This header file may change from version to
-// version without notice, or even be removed.
-//
-// We mean it.
-//
-
-#include <wayland-client.h>
-
-#include <QtWaylandClient/qtwaylandclientglobal.h>
-#include <QtWaylandClient/private/qwayland-xdg-shell.h>
-#include <QtWaylandClient/private/qwaylandshellsurface_p.h>
+#include <QtWaylandClient/private/qwaylandwindow_p.h>
+#include <QtWaylandClient/private/qwaylanddisplay_p.h>
 
 QT_BEGIN_NAMESPACE
 
-class QWindow;
-
 namespace QtWaylandClient {
 
-class QWaylandWindow;
-class QWaylandExtendedSurface;
-
-class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgPopup : public QWaylandShellSurface
-        , public QtWayland::xdg_popup
+bool QWaylandXdgShellIntegration::initialize(QWaylandDisplay *display)
 {
-    Q_OBJECT
-public:
-    QWaylandXdgPopup(struct ::xdg_popup *popup, QWaylandWindow *window);
-    ~QWaylandXdgPopup() override;
+    for (QWaylandDisplay::RegistryGlobal global : display->globals()) {
+        if (global.interface == QLatin1String("xdg_wm_base")) {
+            m_xdgShell.reset(new QWaylandXdgShell(display->wl_registry(), global.id, global.version));
+            break;
+        }
+    }
 
-    void setType(Qt::WindowType type, QWaylandWindow *transientParent) override;
+    if (!m_xdgShell) {
+        qCDebug(lcQpaWayland) << "Couldn't find global xdg_wm_base for xdg-shell stable";
+        return false;
+    }
 
-protected:
-    void xdg_popup_popup_done() override;
+    return QWaylandShellIntegration::initialize(display);
+}
 
-private:
-    QWaylandExtendedSurface *m_extendedWindow = nullptr;
-    QWaylandWindow *m_window = nullptr;
-};
+QWaylandShellSurface *QWaylandXdgShellIntegration::createShellSurface(QWaylandWindow *window)
+{
+    return m_xdgShell->getXdgSurface(window);
+}
 
-QT_END_NAMESPACE
+void QWaylandXdgShellIntegration::handleKeyboardFocusChanged(QWaylandWindow *newFocus, QWaylandWindow *oldFocus)
+{
+    if (newFocus) {
+        auto *xdgSurface = qobject_cast<QWaylandXdgSurface *>(newFocus->shellSurface());
+        if (xdgSurface && !xdgSurface->handlesActiveState())
+            m_display->handleWindowActivated(newFocus);
+    }
+    if (oldFocus && qobject_cast<QWaylandXdgSurface *>(oldFocus->shellSurface())) {
+        auto *xdgSurface = qobject_cast<QWaylandXdgSurface *>(oldFocus->shellSurface());
+        if (xdgSurface && !xdgSurface->handlesActiveState())
+            m_display->handleWindowDeactivated(oldFocus);
+    }
+}
 
 }
 
-#endif // QWAYLANDXDGPOPUP_P_H
+QT_END_NAMESPACE
