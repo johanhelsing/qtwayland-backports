@@ -161,10 +161,6 @@ QWaylandXdgSurface::Popup::~Popup()
         destroy();
 }
 
-void QWaylandXdgSurface::Popup::applyConfigure()
-{
-}
-
 void QWaylandXdgSurface::Popup::xdg_popup_popup_done()
 {
     m_xdgSurface->m_window->window()->close();
@@ -176,6 +172,20 @@ QWaylandXdgSurface::QWaylandXdgSurface(QWaylandXdgShell *shell, ::xdg_surface *s
     , m_shell(shell)
     , m_window(window)
 {
+    QWaylandDisplay *display = window->display();
+    Qt::WindowType type = window->window()->type();
+    auto *transientParent = window->transientParent();
+
+    if ((type == Qt::Popup || type == Qt::ToolTip) && transientParent && display->lastInputDevice()) {
+        setPopup(transientParent, display->lastInputDevice(), display->lastInputSerial(), type == Qt::Popup);
+    } else {
+        setToplevel();
+        if (transientParent) {
+            auto parentXdgSurface = static_cast<QWaylandXdgSurface *>(transientParent->shellSurface());
+            if (parentXdgSurface)
+                m_toplevel->set_parent(parentXdgSurface->m_toplevel->object());
+        }
+    }
 }
 
 QWaylandXdgSurface::~QWaylandXdgSurface()
@@ -195,7 +205,7 @@ void QWaylandXdgSurface::resize(QWaylandInputDevice *inputDevice, xdg_toplevel_r
 
 void QWaylandXdgSurface::resize(QWaylandInputDevice *inputDevice, enum wl_shell_surface_resize edges)
 {
-    auto xdgEdges = reinterpret_cast<enum xdg_toplevel_resize_edge const * const>(&edges);
+    auto xdgEdges = reinterpret_cast<enum xdg_toplevel_resize_edge const *>(&edges);
     resize(inputDevice, *xdgEdges);
 }
 
@@ -221,21 +231,6 @@ void QWaylandXdgSurface::setAppId(const QString &appId)
         m_toplevel->set_app_id(appId);
 }
 
-void QWaylandXdgSurface::setType(Qt::WindowType type, QWaylandWindow *transientParent)
-{
-    QWaylandDisplay *display = m_window->display();
-    if ((type == Qt::Popup || type == Qt::ToolTip) && transientParent && display->lastInputDevice()) {
-        setPopup(transientParent, display->lastInputDevice(), display->lastInputSerial(), type == Qt::Popup);
-    } else {
-        setToplevel();
-        if (transientParent) {
-            auto parentXdgSurface = static_cast<QWaylandXdgSurface *>(transientParent->shellSurface());
-            if (parentXdgSurface)
-                m_toplevel->set_parent(parentXdgSurface->m_toplevel->object());
-        }
-    }
-}
-
 bool QWaylandXdgSurface::handleExpose(const QRegion &region)
 {
     if (!m_configured && !region.isEmpty()) {
@@ -251,8 +246,6 @@ void QWaylandXdgSurface::applyConfigure()
 
     if (m_toplevel)
         m_toplevel->applyConfigure();
-    if (m_popup)
-        m_popup->applyConfigure();
 
     m_configured = true;
     ack_configure(m_pendingConfigureSerial);

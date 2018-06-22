@@ -60,6 +60,8 @@ QWaylandXdgSurfaceV5::QWaylandXdgSurfaceV5(QWaylandXdgShellV5 *shell, QWaylandWi
 {
     if (window->display()->windowExtension())
         m_extendedWindow = new QWaylandExtendedSurface(window);
+
+    updateTransientParent(window->transientParent());
 }
 
 QWaylandXdgSurfaceV5::~QWaylandXdgSurfaceV5()
@@ -74,7 +76,7 @@ QWaylandXdgSurfaceV5::~QWaylandXdgSurfaceV5()
 void QWaylandXdgSurfaceV5::resize(QWaylandInputDevice *inputDevice, enum wl_shell_surface_resize edges)
 {
     // May need some conversion if types get incompatibles, ATM they're identical
-    enum resize_edge const * const arg = reinterpret_cast<enum resize_edge const * const>(&edges);
+    enum resize_edge const * const arg = reinterpret_cast<enum resize_edge const *>(&edges);
     resize(inputDevice, *arg);
 }
 
@@ -139,13 +141,6 @@ void QWaylandXdgSurfaceV5::sendProperty(const QString &name, const QVariant &val
 {
     if (m_extendedWindow)
         m_extendedWindow->updateGenericProperty(name, value);
-}
-
-void QWaylandXdgSurfaceV5::setType(Qt::WindowType type, QWaylandWindow *transientParent)
-{
-    Q_UNUSED(type)
-    if (transientParent)
-        updateTransientParent(transientParent);
 }
 
 void QWaylandXdgSurfaceV5::applyConfigure()

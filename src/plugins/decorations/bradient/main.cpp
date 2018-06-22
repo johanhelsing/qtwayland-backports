@@ -255,6 +255,7 @@ void QWaylandBradientDecoration::paint(QPaintDevice *device)
         int dy = (top.height()- size.height()) /2;
         QFont font = p.font();
         font.setBold(true);
+        font.setPixelSize(12);
         p.setFont(font);
         QPoint windowTitlePoint(top.topLeft().x() + dx,
                  top.topLeft().y() + dy);
@@ -305,7 +306,7 @@ void QWaylandBradientDecoration::paint(QPaintDevice *device)
     p.save();
     p.drawRect(maximizeButtonRect());
     rect = maximizeButtonRect().adjusted(5, 5, -5, -5);
-    if (waylandWindow()->isMaximized()) {
+    if ((window()->windowStates() & Qt::WindowMaximized)) {
         QRectF rect1 = rect.adjusted(rect.width() / 3, 0, 0, -rect.height() / 3);
         QRectF rect2 = rect.adjusted(0, rect.height() / 4, -rect.width() / 4, 0);
         p.drawRect(rect1);
@@ -350,16 +351,7 @@ bool QWaylandBradientDecoration::handleMouse(QWaylandInputDevice *inputDevice, c
     Q_UNUSED(global);
 
     // Figure out what area mouse is in
-    if (closeButtonRect().contains(local)) {
-        if (clickButton(b, Close))
-            QWindowSystemInterface::handleCloseEvent(window());
-    } else if (maximizeButtonRect().contains(local)) {
-        if (clickButton(b, Maximize))
-            window()->setWindowStates(window()->windowStates() ^ Qt::WindowMaximized);
-    } else if (minimizeButtonRect().contains(local)) {
-        if (clickButton(b, Minimize))
-            window()->setWindowState(Qt::WindowMinimized);
-    } else if (local.y() <= margins().top()) {
+    if (local.y() <= margins().top()) {
         processMouseTop(inputDevice,local,b,mods);
     } else if (local.y() > window()->height() + margins().top()) {
         processMouseBottom(inputDevice,local,b,mods);
@@ -418,19 +410,31 @@ void QWaylandBradientDecoration::processMouseTop(QWaylandInputDevice *inputDevic
 #endif
             startResize(inputDevice,WL_SHELL_SURFACE_RESIZE_TOP_RIGHT,b);
         } else {
-            //top reszie bit
+            //top resize bit
 #if QT_CONFIG(cursor)
             waylandWindow()->setMouseCursor(inputDevice, Qt::SplitVCursor);
 #endif
             startResize(inputDevice,WL_SHELL_SURFACE_RESIZE_TOP,b);
         }
+    } else if (local.x() <= margins().left()) {
+        processMouseLeft(inputDevice, local, b, mods);
+    } else if (local.x() > window()->width() + margins().left()) {
+        processMouseRight(inputDevice, local, b, mods);
+    } else if (closeButtonRect().contains(local)) {
+        if (clickButton(b, Close))
+            QWindowSystemInterface::handleCloseEvent(window());
+    } else if (maximizeButtonRect().contains(local)) {
+        if (clickButton(b, Maximize))
+            window()->setWindowStates(window()->windowStates() ^ Qt::WindowMaximized);
+    } else if (minimizeButtonRect().contains(local)) {
+        if (clickButton(b, Minimize))
+            window()->setWindowState(Qt::WindowMinimized);
     } else {
 #if QT_CONFIG(cursor)
         waylandWindow()->restoreMouseCursor(inputDevice);
 #endif
         startMove(inputDevice,b);
     }
-
 }
 
 void QWaylandBradientDecoration::processMouseBottom(QWaylandInputDevice *inputDevice, const QPointF &local, Qt::MouseButtons b, Qt::KeyboardModifiers mods)

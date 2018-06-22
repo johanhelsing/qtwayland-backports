@@ -85,7 +85,6 @@ public:
     void setTitle(const QString &title) override;
     void setAppId(const QString &appId) override;
 
-    void setType(Qt::WindowType type, QWaylandWindow *transientParent) override;
     bool isExposed() const override { return m_configured; }
     bool handleExpose(const QRegion &) override;
     bool handlesActiveState() const { return m_toplevel; }
@@ -123,7 +122,6 @@ private:
         Popup(QWaylandXdgSurface *xdgSurface, QWaylandXdgSurface *parent, QtWayland::xdg_positioner *positioner);
         ~Popup() override;
 
-        void applyConfigure();
         void xdg_popup_popup_done() override;
 
         QWaylandXdgSurface *m_xdgSurface = nullptr;

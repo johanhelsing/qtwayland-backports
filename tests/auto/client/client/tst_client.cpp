@@ -182,6 +182,7 @@ private slots:
     void hiddenTransientParent();
     void hiddenPopupParent();
     void glWindow();
+    void longWindowTitle();
 
 private:
     MockCompositor *compositor = nullptr;
@@ -596,6 +597,16 @@ void tst_WaylandClient::glWindow()
     //QTBUG-65553
     testWindow->setVisible(false);
     QTRY_VERIFY(!compositor->surface());
+}
+
+void tst_WaylandClient::longWindowTitle()
+{
+    // See QTBUG-68715
+    QWindow window;
+    QString absurdlyLongTitle(10000, QLatin1Char('z'));
+    window.setTitle(absurdlyLongTitle);
+    window.show();
+    QTRY_VERIFY(compositor->surface());
 }
 
 int main(int argc, char **argv)
