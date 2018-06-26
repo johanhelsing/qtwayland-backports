@@ -38,7 +38,7 @@
 **
 ****************************************************************************/
 
-#include "qwaylandxdgshellv5_p.h"
+#include "qwaylandxdgshellv6_p.h"
 
 #include <QtWaylandClient/private/qwaylanddisplay_p.h>
 #include <QtWaylandClient/private/qwaylandwindow_p.h>
