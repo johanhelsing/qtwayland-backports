@@ -115,6 +115,8 @@ void QWaylandXdgSurfaceV6::Toplevel::zxdg_toplevel_v6_configure(int32_t width, i
             break;
         }
     }
+    qCDebug(lcQpaWayland) << "Received zxdg_toplevel_v6.configure with" << m_pending.size
+                          << "and" << m_pending.states;
 }
 
 void QWaylandXdgSurfaceV6::Toplevel::zxdg_toplevel_v6_close()
@@ -204,8 +206,10 @@ QWaylandXdgSurfaceV6::QWaylandXdgSurfaceV6(QWaylandXdgShellV6 *shell, ::zxdg_sur
 
 QWaylandXdgSurfaceV6::~QWaylandXdgSurfaceV6()
 {
-    if (m_toplevel)
-        zxdg_toplevel_v6_destroy(m_toplevel->object());
+    if (m_toplevel) {
+        delete m_toplevel;
+        m_toplevel = nullptr;
+    }
     if (m_popup) {
         delete m_popup;
         m_popup = nullptr;

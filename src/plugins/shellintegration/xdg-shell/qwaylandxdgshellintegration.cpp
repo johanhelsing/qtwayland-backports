@@ -38,6 +38,7 @@
 ****************************************************************************/
 
 #include "qwaylandxdgshellintegration_p.h"
+#include "qwaylandxdgdecorationv1_p.h"
 
 #include <QtWaylandClient/private/qwaylandwindow_p.h>
 #include <QtWaylandClient/private/qwaylanddisplay_p.h>
@@ -50,7 +51,7 @@ bool QWaylandXdgShellIntegration::initialize(QWaylandDisplay *display)
 {
     for (QWaylandDisplay::RegistryGlobal global : display->globals()) {
         if (global.interface == QLatin1String("xdg_wm_base")) {
-            m_xdgShell.reset(new QWaylandXdgShell(display->wl_registry(), global.id, global.version));
+            m_xdgShell.reset(new QWaylandXdgShell(display, global.id, global.version));
             break;
         }
     }

@@ -1,10 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2017 The Qt Company Ltd.
-** Copyright (C) 2017 Giulio Camuffo.
+** Copyright (C) 2018 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the config.tests of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -38,41 +37,61 @@
 **
 ****************************************************************************/
 
-#include "qwaylandbuffer_p.h"
+#ifndef QWAYLANDXDGDECORATIONV1_P_H
+#define QWAYLANDXDGDECORATIONV1_P_H
 
-#include <QDebug>
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
+#include "qwayland-xdg-decoration-unstable-v1.h"
+
+#include <QtWaylandClient/qtwaylandclientglobal.h>
 
 QT_BEGIN_NAMESPACE
 
+class QWindow;
+
 namespace QtWaylandClient {
 
-QWaylandBuffer::QWaylandBuffer()
-{
-}
+class QWaylandXdgToplevel;
+class QWaylandXdgToplevelDecorationV1;
 
-QWaylandBuffer::~QWaylandBuffer()
+class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgDecorationManagerV1 : public QtWayland::zxdg_decoration_manager_v1
 {
-    if (mBuffer)
-        wl_buffer_destroy(mBuffer);
-}
-
-void QWaylandBuffer::init(wl_buffer *buf)
-{
-    mBuffer = buf;
-    wl_buffer_add_listener(buf, &listener, this);
-}
-
-void QWaylandBuffer::release(void *data, wl_buffer *)
-{
-    QWaylandBuffer *self = static_cast<QWaylandBuffer *>(data);
-    self->mBusy = false;
-    self->mCommitted = false;
-}
-
-const wl_buffer_listener QWaylandBuffer::listener = {
-    QWaylandBuffer::release
+public:
+    QWaylandXdgDecorationManagerV1(struct ::wl_registry *registry, uint32_t id, uint32_t availableVersion);
+    ~QWaylandXdgDecorationManagerV1() override;
+    QWaylandXdgToplevelDecorationV1 *createToplevelDecoration(::xdg_toplevel *toplevel);
 };
 
-}
+class Q_WAYLAND_CLIENT_EXPORT QWaylandXdgToplevelDecorationV1 : public QtWayland::zxdg_toplevel_decoration_v1
+{
+public:
+    QWaylandXdgToplevelDecorationV1(::zxdg_toplevel_decoration_v1 *decoration);
+    ~QWaylandXdgToplevelDecorationV1() override;
+    void requestMode(mode mode);
+    void unsetMode();
+    mode pending() const;
+
+protected:
+    void zxdg_toplevel_decoration_v1_configure(uint32_t mode) override;
+
+private:
+    mode m_pending = mode_client_side;
+    mode m_requested = mode_client_side;
+    bool m_modeSet = false;
+};
 
 QT_END_NAMESPACE
+
+}
+
+#endif // QWAYLANDXDGDECORATIONV1_P_H

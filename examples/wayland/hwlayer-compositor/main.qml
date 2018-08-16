@@ -51,7 +51,7 @@
 import QtQuick 2.6
 import QtQuick.Window 2.2
 import QtQuick.Controls 2.2
-import QtWayland.Compositor 1.2
+import QtWayland.Compositor 1.3
 
 WaylandCompositor {
     WaylandOutput {
@@ -155,7 +155,7 @@ WaylandCompositor {
     function addShellSurface(shellSurface) {
         shellSurfaces.append({shSurface: shellSurface, animatePosition: false, animateOpacity: false, level: 0});
     }
-    WlShell { onWlShellSurfaceCreated: addShellSurface(shellSurface) }
-    XdgShellV5 { onXdgSurfaceCreated: addShellSurface(xdgSurface) }
+    XdgShell { onToplevelCreated: addShellSurface(xdgSurface) }
     XdgShellV6 { onToplevelCreated: addShellSurface(xdgSurface) }
+    WlShell { onWlShellSurfaceCreated: addShellSurface(shellSurface) }
 }

@@ -1,10 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2017 The Qt Company Ltd.
-** Copyright (C) 2017 Giulio Camuffo.
+** Copyright (C) 2018 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
-** This file is part of the plugins of the Qt Toolkit.
+** This file is part of the config.tests of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -38,40 +37,68 @@
 **
 ****************************************************************************/
 
-#include "qwaylandbuffer_p.h"
-
-#include <QDebug>
+#include "qwaylandxdgdecorationv1_p.h"
+#include "qwaylandxdgshell_p.h"
 
 QT_BEGIN_NAMESPACE
 
 namespace QtWaylandClient {
 
-QWaylandBuffer::QWaylandBuffer()
+QWaylandXdgDecorationManagerV1::QWaylandXdgDecorationManagerV1(wl_registry *registry, uint32_t id, uint32_t availableVersion)
+    : QtWayland::zxdg_decoration_manager_v1(registry, id, qMin(availableVersion, 1u))
 {
 }
 
-QWaylandBuffer::~QWaylandBuffer()
+QWaylandXdgDecorationManagerV1::~QWaylandXdgDecorationManagerV1()
 {
-    if (mBuffer)
-        wl_buffer_destroy(mBuffer);
+    Q_ASSERT(isInitialized());
+    destroy();
 }
 
-void QWaylandBuffer::init(wl_buffer *buf)
+QWaylandXdgToplevelDecorationV1 *QWaylandXdgDecorationManagerV1::createToplevelDecoration(::xdg_toplevel *toplevel)
 {
-    mBuffer = buf;
-    wl_buffer_add_listener(buf, &listener, this);
+    Q_ASSERT(toplevel);
+    return new QWaylandXdgToplevelDecorationV1(get_toplevel_decoration(toplevel));
 }
 
-void QWaylandBuffer::release(void *data, wl_buffer *)
+QWaylandXdgToplevelDecorationV1::QWaylandXdgToplevelDecorationV1(::zxdg_toplevel_decoration_v1 *decoration)
+    : QtWayland::zxdg_toplevel_decoration_v1(decoration)
 {
-    QWaylandBuffer *self = static_cast<QWaylandBuffer *>(data);
-    self->mBusy = false;
-    self->mCommitted = false;
 }
 
-const wl_buffer_listener QWaylandBuffer::listener = {
-    QWaylandBuffer::release
-};
+QWaylandXdgToplevelDecorationV1::~QWaylandXdgToplevelDecorationV1()
+{
+    Q_ASSERT(isInitialized());
+    destroy();
+}
+
+void QWaylandXdgToplevelDecorationV1::requestMode(QtWayland::zxdg_toplevel_decoration_v1::mode mode)
+{
+    // According to the spec the client is responsible for not requesting a mode repeatedly.
+    if (m_modeSet && m_requested == mode)
+        return;
+
+    set_mode(mode);
+    m_requested = mode;
+    m_modeSet = true;
+}
+
+void QWaylandXdgToplevelDecorationV1::unsetMode()
+{
+    unset_mode();
+    m_modeSet = false;
+    m_requested = mode_client_side;
+}
+
+QWaylandXdgToplevelDecorationV1::mode QWaylandXdgToplevelDecorationV1::pending() const
+{
+    return m_pending;
+}
+
+void QtWaylandClient::QWaylandXdgToplevelDecorationV1::zxdg_toplevel_decoration_v1_configure(uint32_t mode)
+{
+    m_pending = zxdg_toplevel_decoration_v1::mode(mode);
+}
 
 }
 
