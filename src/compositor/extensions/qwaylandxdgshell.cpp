@@ -904,6 +904,12 @@ bool QWaylandXdgToplevel::activated() const
     return d->m_lastAckedConfigure.states.contains(QWaylandXdgToplevel::State::ActivatedState);
 }
 
+QWaylandXdgToplevel::DecorationMode QWaylandXdgToplevel::decorationMode() const
+{
+    Q_D(const QWaylandXdgToplevel);
+    return d->m_decoration ? d->m_decoration->configuredMode() : DecorationMode::ClientSideDecoration;
+}
+
 /*!
  * \qmlmethod size QtWaylandCompositor::XdgToplevel::sizeForResize(size size, point delta, uint edges)
  *
@@ -929,9 +935,14 @@ QSize QWaylandXdgToplevel::sizeForResize(const QSizeF &size, const QPointF &delt
     else if (edges & Qt::BottomEdge)
         height += delta.y();
 
-    //TODO: use minSize given by the client here instead
-    QSizeF newSize(qMax(width, 1.0), qMax(height, 1.0));
-    return newSize.toSize();
+    QSize newSize = QSize(width, height)
+            .expandedTo(minSize())
+            .expandedTo({1, 1}); // We don't want to send a size of (0,0) as that means that the client decides
+
+    if (maxSize().isValid())
+        newSize = newSize.boundedTo(maxSize());
+
+    return newSize;
 }
 
 /*!
@@ -1111,6 +1122,13 @@ QWaylandSurfaceRole *QWaylandXdgToplevel::role()
     return &QWaylandXdgToplevelPrivate::s_role;
 }
 
+/*!
+ * Returns the QWaylandXdgToplevel corresponding to the \a resource.
+ */
+QWaylandXdgToplevel *QWaylandXdgToplevel::fromResource(wl_resource *resource)
+{
+    return static_cast<QWaylandXdgToplevelPrivate *>(QWaylandXdgToplevelPrivate::Resource::fromResource(resource)->xdg_toplevel_object)->q_func();
+}
 
 /*!
  * \qmlsignal QtWaylandCompositor::XdgShell::xdgSurfaceCreated(XdgSurface xdgSurface)
@@ -1290,11 +1308,7 @@ void QWaylandXdgToplevelPrivate::xdg_toplevel_destroy(QtWaylandServer::xdg_tople
 void QWaylandXdgToplevelPrivate::xdg_toplevel_set_parent(QtWaylandServer::xdg_toplevel::Resource *resource, wl_resource *parent)
 {
     Q_UNUSED(resource);
-    QWaylandXdgToplevel *parentToplevel = nullptr;
-    if (parent) {
-        parentToplevel = static_cast<QWaylandXdgToplevelPrivate *>(
-                    QWaylandXdgToplevelPrivate::Resource::fromResource(parent)->xdg_toplevel_object)->q_func();
-    }
+    QWaylandXdgToplevel *parentToplevel = QWaylandXdgToplevel::fromResource(parent);
 
     Q_Q(QWaylandXdgToplevel);
 

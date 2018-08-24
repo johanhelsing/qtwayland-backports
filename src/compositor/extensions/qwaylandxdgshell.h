@@ -67,8 +67,8 @@ class Q_WAYLAND_COMPOSITOR_EXPORT QWaylandXdgShell : public QWaylandShellTemplat
     Q_OBJECT
     Q_DECLARE_PRIVATE(QWaylandXdgShell)
 public:
-    QWaylandXdgShell();
-    QWaylandXdgShell(QWaylandCompositor *compositor);
+    explicit QWaylandXdgShell();
+    explicit QWaylandXdgShell(QWaylandCompositor *compositor);
 
     void initialize() override;
 
@@ -100,8 +100,8 @@ class Q_WAYLAND_COMPOSITOR_EXPORT QWaylandXdgSurface : public QWaylandShellSurfa
     Q_PROPERTY(QRect windowGeometry READ windowGeometry NOTIFY windowGeometryChanged)
 
 public:
-    QWaylandXdgSurface();
-    QWaylandXdgSurface(QWaylandXdgShell* xdgShell, QWaylandSurface *surface, const QWaylandResource &resource);
+    explicit QWaylandXdgSurface();
+    explicit QWaylandXdgSurface(QWaylandXdgShell* xdgShell, QWaylandSurface *surface, const QWaylandResource &resource);
 
     Q_INVOKABLE void initialize(QWaylandXdgShell* xdgShell, QWaylandSurface *surface, const QWaylandResource &resource);
 
@@ -150,6 +150,7 @@ class Q_WAYLAND_COMPOSITOR_EXPORT QWaylandXdgToplevel : public QObject
     Q_PROPERTY(bool fullscreen READ fullscreen NOTIFY fullscreenChanged)
     Q_PROPERTY(bool resizing READ resizing NOTIFY resizingChanged)
     Q_PROPERTY(bool activated READ activated NOTIFY activatedChanged)
+    Q_PROPERTY(enum DecorationMode decorationMode READ decorationMode NOTIFY decorationModeChanged)
 public:
     enum State : uint {
         MaximizedState  = 1,
@@ -159,7 +160,14 @@ public:
     };
     Q_ENUM(State)
 
-    QWaylandXdgToplevel(QWaylandXdgSurface *xdgSurface, QWaylandResource &resource);
+    enum DecorationMode {
+        DefaultDecorationMode,
+        ClientSideDecoration,
+        ServerSideDecoration,
+    };
+    Q_ENUM(DecorationMode)
+
+    explicit QWaylandXdgToplevel(QWaylandXdgSurface *xdgSurface, QWaylandResource &resource);
 
     QWaylandXdgToplevel *parentToplevel() const;
 
@@ -172,6 +180,7 @@ public:
     bool fullscreen() const;
     bool resizing() const;
     bool activated() const;
+    DecorationMode decorationMode() const;
 
     Q_INVOKABLE QSize sizeForResize(const QSizeF &size, const QPointF &delta, Qt::Edges edges) const;
     uint sendConfigure(const QSize &size, const QVector<State> &states);
@@ -183,6 +192,7 @@ public:
     Q_INVOKABLE uint sendResizing(const QSize &maxSize);
 
     static QWaylandSurfaceRole *role();
+    static QWaylandXdgToplevel *fromResource(::wl_resource *resource);
 
 Q_SIGNALS:
     void parentToplevelChanged();
@@ -204,6 +214,8 @@ Q_SIGNALS:
     void setFullscreen(QWaylandOutput *output);
     void unsetFullscreen();
     void setMinimized();
+
+    void decorationModeChanged();
 
 private:
     QList<int> statesAsInts() const;
@@ -251,8 +263,8 @@ Q_SIGNALS:
     void configuredGeometryChanged();
 
 private:
-    QWaylandXdgPopup(QWaylandXdgSurface *xdgSurface, QWaylandXdgSurface *parentXdgSurface,
-                     QWaylandXdgPositioner *positioner, QWaylandResource &resource);
+    explicit QWaylandXdgPopup(QWaylandXdgSurface *xdgSurface, QWaylandXdgSurface *parentXdgSurface,
+                              QWaylandXdgPositioner *positioner, QWaylandResource &resource);
     friend class QWaylandXdgSurfacePrivate;
 };
 
