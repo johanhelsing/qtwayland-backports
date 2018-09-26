@@ -54,7 +54,7 @@ namespace QtWaylandClient {
 
 QWaylandXdgSurfaceV5::QWaylandXdgSurfaceV5(QWaylandXdgShellV5 *shell, QWaylandWindow *window)
     : QWaylandShellSurface(window)
-    , QtWayland::xdg_surface(shell->get_xdg_surface(window->object()))
+    , QtWayland::xdg_surface_v5(shell->get_xdg_surface(window->object()))
     , m_window(window)
     , m_shell(shell)
 {
@@ -73,18 +73,19 @@ QWaylandXdgSurfaceV5::~QWaylandXdgSurfaceV5()
     delete m_extendedWindow;
 }
 
-void QWaylandXdgSurfaceV5::resize(QWaylandInputDevice *inputDevice, enum wl_shell_surface_resize edges)
+QtWayland::xdg_surface_v5::resize_edge QWaylandXdgSurfaceV5::convertToResizeEdges(Qt::Edges edges)
 {
-    // May need some conversion if types get incompatibles, ATM they're identical
-    enum resize_edge const * const arg = reinterpret_cast<enum resize_edge const *>(&edges);
-    resize(inputDevice, *arg);
+    return static_cast<enum resize_edge>(
+                ((edges & Qt::TopEdge) ? resize_edge_top : 0)
+                | ((edges & Qt::BottomEdge) ? resize_edge_bottom : 0)
+                | ((edges & Qt::LeftEdge) ? resize_edge_left : 0)
+                | ((edges & Qt::RightEdge) ? resize_edge_right : 0));
 }
 
-void QWaylandXdgSurfaceV5::resize(QWaylandInputDevice *inputDevice, enum resize_edge edges)
+void QWaylandXdgSurfaceV5::resize(QWaylandInputDevice *inputDevice, Qt::Edges edges)
 {
-    resize(inputDevice->wl_seat(),
-           inputDevice->serial(),
-           edges);
+    resize_edge resizeEdges = convertToResizeEdges(edges);
+    resize(inputDevice->wl_seat(), inputDevice->serial(), resizeEdges);
 }
 
 bool QWaylandXdgSurfaceV5::move(QWaylandInputDevice *inputDevice)
@@ -105,12 +106,12 @@ void QWaylandXdgSurfaceV5::updateTransientParent(QWaylandWindow *parent)
 
 void QWaylandXdgSurfaceV5::setTitle(const QString & title)
 {
-    return QtWayland::xdg_surface::set_title(title);
+    return QtWayland::xdg_surface_v5::set_title(title);
 }
 
 void QWaylandXdgSurfaceV5::setAppId(const QString & appId)
 {
-    return QtWayland::xdg_surface::set_app_id(appId);
+    return QtWayland::xdg_surface_v5::set_app_id(appId);
 }
 
 void QWaylandXdgSurfaceV5::raise()

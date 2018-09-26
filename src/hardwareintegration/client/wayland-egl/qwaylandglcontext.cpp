@@ -412,7 +412,7 @@ bool QWaylandGLContext::makeCurrent(QPlatformSurface *surface)
         window->createDecoration();
 
     if (eglSurface == EGL_NO_SURFACE) {
-        window->updateSurface(window->isExposed());
+        window->updateSurface(true);
         eglSurface = window->eglSurface();
     }
 
@@ -422,6 +422,9 @@ bool QWaylandGLContext::makeCurrent(QPlatformSurface *surface)
         return false;
     }
 
+    //### setCurrentContext will be called in QOpenGLContext::makeCurrent after this function
+    // returns, but that's too late, as we need a current context in order to bind the content FBO.
+    QOpenGLContextPrivate::setCurrentContext(context());
     window->bindContentFBO();
 
     return true;

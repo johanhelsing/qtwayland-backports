@@ -288,7 +288,7 @@ public:
                     m_sgTex->bind();
                 }
             } else {
-                QQuickWindow::CreateTextureOptions opt = QQuickWindow::TextureOwnsGLTexture;
+                QQuickWindow::CreateTextureOptions opt;
                 QWaylandQuickSurface *surface = qobject_cast<QWaylandQuickSurface *>(surfaceItem->surface());
                 if (surface && surface->useTextureAlpha()) {
                     opt |= QQuickWindow::TextureHasAlphaChannel;
@@ -1058,6 +1058,22 @@ QPointF QWaylandQuickItem::mapToSurface(const QPointF &point) const
     qreal yScale = height() / surface()->size().height() * surface()->bufferScale();
 
     return QPointF(point.x() / xScale, point.y() / yScale);
+}
+
+/*!
+ * Maps the given \a point in the Wayland surfaces's coordinate system to the equivalent
+ * point within this item's coordinate system, and returns the mapped coordinate.
+ */
+QPointF QWaylandQuickItem::mapFromSurface(const QPointF &point) const
+{
+    Q_D(const QWaylandQuickItem);
+    if (!surface() || surface()->size().isEmpty())
+        return point * d->scaleFactor();
+
+    qreal xScale = width() / surface()->size().width() * surface()->bufferScale();
+    qreal yScale = height() / surface()->size().height() * surface()->bufferScale();
+
+    return QPointF(point.x() * xScale, point.y() * yScale);
 }
 
 /*!
