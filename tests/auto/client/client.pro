@@ -5,4 +5,5 @@ SUBDIRS += \
     fullscreenshellv1 \
     iviapplication \
     xdgshellv6 \
-    wl_connect
+    wl_connect \
+    surfaceexposure
