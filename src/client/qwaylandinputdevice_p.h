@@ -77,11 +77,17 @@ struct wl_cursor_image;
 
 QT_BEGIN_NAMESPACE
 
+namespace QtWayland {
+class zwp_primary_selection_device_v1;
+} //namespace QtWayland
+
 namespace QtWaylandClient {
 
-class QWaylandWindow;
-class QWaylandDisplay;
 class QWaylandDataDevice;
+class QWaylandDisplay;
+#if QT_CONFIG(wayland_client_primary_selection)
+class QWaylandPrimarySelectionDeviceV1;
+#endif
 class QWaylandTextInput;
 #if QT_CONFIG(cursor)
 class QWaylandCursorTheme;
@@ -113,6 +119,11 @@ public:
 #if QT_CONFIG(wayland_datadevice)
     void setDataDevice(QWaylandDataDevice *device);
     QWaylandDataDevice *dataDevice() const;
+#endif
+
+#if QT_CONFIG(wayland_client_primary_selection)
+    void setPrimarySelectionDevice(QWaylandPrimarySelectionDeviceV1 *primarySelectionDevice);
+    QWaylandPrimarySelectionDeviceV1 *primarySelectionDevice() const;
 #endif
 
     void setTextInput(QWaylandTextInput *textInput);
@@ -155,6 +166,10 @@ private:
 
 #if QT_CONFIG(wayland_datadevice)
     QWaylandDataDevice *mDataDevice = nullptr;
+#endif
+
+#if QT_CONFIG(wayland_client_primary_selection)
+    QScopedPointer<QWaylandPrimarySelectionDeviceV1> mPrimarySelectionDevice;
 #endif
 
     Keyboard *mKeyboard = nullptr;

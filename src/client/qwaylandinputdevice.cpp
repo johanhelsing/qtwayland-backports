@@ -46,6 +46,9 @@
 #include "qwaylanddatadevice_p.h"
 #include "qwaylanddatadevicemanager_p.h"
 #endif
+#if QT_CONFIG(wayland_client_primary_selection)
+#include "qwaylandprimaryselectionv1_p.h"
+#endif
 #include "qwaylandtouch_p.h"
 #include "qwaylandscreen_p.h"
 #include "qwaylandcursor_p.h"
@@ -364,6 +367,12 @@ QWaylandInputDevice::QWaylandInputDevice(QWaylandDisplay *display, int version, 
     }
 #endif
 
+#if QT_CONFIG(wayland_client_primary_selection)
+    // TODO: Could probably decouple this more if there was a signal for new seat added
+    if (auto *psm = mQDisplay->primarySelectionManager())
+        setPrimarySelectionDevice(psm->createDevice(this));
+#endif
+
     if (mQDisplay->textInputManager())
         mTextInput.reset(new QWaylandTextInput(mQDisplay, mQDisplay->textInputManager()->get_text_input(wl_seat())));
 
@@ -444,6 +453,18 @@ void QWaylandInputDevice::setDataDevice(QWaylandDataDevice *device)
 QWaylandDataDevice *QWaylandInputDevice::dataDevice() const
 {
     return mDataDevice;
+}
+#endif
+
+#if QT_CONFIG(wayland_client_primary_selection)
+void QWaylandInputDevice::setPrimarySelectionDevice(QWaylandPrimarySelectionDeviceV1 *primarySelectionDevice)
+{
+    mPrimarySelectionDevice.reset(primarySelectionDevice);
+}
+
+QWaylandPrimarySelectionDeviceV1 *QWaylandInputDevice::primarySelectionDevice() const
+{
+    return mPrimarySelectionDevice.data();
 }
 #endif
 
@@ -937,6 +958,10 @@ void QWaylandInputDevice::Keyboard::handleFocusLost()
 #if QT_CONFIG(clipboard)
     if (auto *dataDevice = mParent->dataDevice())
         dataDevice->invalidateSelectionOffer();
+#endif
+#if QT_CONFIG(wayland_client_primary_selection)
+    if (auto *device = mParent->primarySelectionDevice())
+        device->invalidateSelectionOffer();
 #endif
     mParent->mQDisplay->handleKeyboardFocusChanged(mParent);
     mRepeatTimer.stop();
