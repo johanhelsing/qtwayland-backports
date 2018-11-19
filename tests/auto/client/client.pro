@@ -6,4 +6,5 @@ SUBDIRS += \
     iviapplication \
     xdgshellv6 \
     wl_connect \
-    surfaceexposure
+    surfaceexposure \
+    seatv4
