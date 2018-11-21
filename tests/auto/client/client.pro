@@ -7,4 +7,5 @@ SUBDIRS += \
     xdgshellv6 \
     wl_connect \
     surfaceexposure \
-    seatv4
+    seatv4 \
+    seatv5
