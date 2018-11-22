@@ -40,6 +40,7 @@
 #ifdef QT_WAYLAND_COMPOSITOR_QUICK
 #include "qwaylandxdgshellv6integration_p.h"
 #endif
+#include <QtWaylandCompositor/private/qwaylandutils_p.h>
 
 #include <QtWaylandCompositor/QWaylandCompositor>
 #include <QtWaylandCompositor/QWaylandSeat>
@@ -316,7 +317,7 @@ QRect QWaylandXdgSurfaceV6Private::calculateFallbackWindowGeometry() const
 {
     // TODO: The unset window geometry should include subsurfaces as well, so this solution
     // won't work too well on those kinds of clients.
-    return QRect(QPoint(0, 0), m_surface->size() / m_surface->bufferScale());
+    return QRect(QPoint(), m_surface->destinationSize());
 }
 
 void QWaylandXdgSurfaceV6Private::updateFallbackWindowGeometry()
@@ -515,7 +516,7 @@ void QWaylandXdgSurfaceV6::initialize(QWaylandXdgShellV6 *xdgShell, QWaylandSurf
     d->init(resource.resource());
     setExtensionContainer(surface);
     d->m_windowGeometry = d->calculateFallbackWindowGeometry();
-    connect(surface, &QWaylandSurface::sizeChanged, this, &QWaylandXdgSurfaceV6::handleSurfaceSizeChanged);
+    connect(surface, &QWaylandSurface::destinationSizeChanged, this, &QWaylandXdgSurfaceV6::handleSurfaceSizeChanged);
     connect(surface, &QWaylandSurface::bufferScaleChanged, this, &QWaylandXdgSurfaceV6::handleBufferScaleChanged);
     emit shellChanged();
     emit surfaceChanged();
@@ -679,10 +680,9 @@ QByteArray QWaylandXdgSurfaceV6::interfaceName()
  */
 QWaylandXdgSurfaceV6 *QWaylandXdgSurfaceV6::fromResource(wl_resource *resource)
 {
-    auto xsResource = QWaylandXdgSurfaceV6Private::Resource::fromResource(resource);
-    if (!xsResource)
-        return nullptr;
-    return static_cast<QWaylandXdgSurfaceV6Private *>(xsResource->zxdg_surface_v6_object)->q_func();
+    if (auto p = QtWayland::fromResource<QWaylandXdgSurfaceV6Private *>(resource))
+        return p->q_func();
+    return nullptr;
 }
 
 #ifdef QT_WAYLAND_COMPOSITOR_QUICK
@@ -1995,9 +1995,7 @@ void QWaylandXdgPositionerV6::zxdg_positioner_v6_set_offset(QtWaylandServer::zxd
 
 QWaylandXdgPositionerV6 *QWaylandXdgPositionerV6::fromResource(wl_resource *resource)
 {
-    if (auto *r = Resource::fromResource(resource))
-        return static_cast<QWaylandXdgPositionerV6 *>(r->zxdg_positioner_v6_object);
-    return nullptr;
+    return QtWayland::fromResource<QWaylandXdgPositionerV6 *>(resource);
 }
 
 QT_END_NAMESPACE

@@ -49,8 +49,7 @@
 #include <QtGui/QPainter>
 #include <QMutexLocker>
 
-#include <wayland-client.h>
-#include <wayland-client-protocol.h>
+#include <QtWaylandClient/private/wayland-wayland-client-protocol.h>
 
 #include <unistd.h>
 #include <sys/mman.h>
@@ -234,8 +233,7 @@ void QWaylandShmBackingStore::flush(QWindow *window, const QRegion &region, cons
     mFrontBuffer = mBackBuffer;
 
     QMargins margins = windowDecorationMargins();
-
-    waylandWindow()->commit(mFrontBuffer, region.translated(margins.left(), margins.top()));
+    waylandWindow()->safeCommit(mFrontBuffer, region.translated(margins.left(), margins.top()));
 }
 
 void QWaylandShmBackingStore::resize(const QSize &size, const QRegion &)

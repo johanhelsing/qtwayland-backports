@@ -72,9 +72,6 @@ void QWaylandXdgSurfaceV6::Toplevel::applyConfigure()
     if (!(m_applied.states & (Qt::WindowMaximized|Qt::WindowFullScreen)))
         m_normalSize = m_xdgSurface->m_window->window()->frameGeometry().size();
 
-    if (m_pending.size.isEmpty() && !m_normalSize.isEmpty())
-        m_pending.size = m_normalSize;
-
     if ((m_pending.states & Qt::WindowActive) && !(m_applied.states & Qt::WindowActive))
         m_xdgSurface->m_window->display()->handleWindowActivated(m_xdgSurface->m_window);
 
@@ -85,10 +82,20 @@ void QWaylandXdgSurfaceV6::Toplevel::applyConfigure()
     Qt::WindowStates statesWithoutActive = m_pending.states & ~Qt::WindowActive;
 
     m_xdgSurface->m_window->handleWindowStatesChanged(statesWithoutActive);
-    m_xdgSurface->m_window->resizeFromApplyConfigure(m_pending.size);
+
+    if (m_pending.size.isEmpty()) {
+        // An empty size in the configure means it's up to the client to choose the size
+        bool normalPending = !(m_pending.states & (Qt::WindowMaximized|Qt::WindowFullScreen));
+        if (normalPending && !m_normalSize.isEmpty())
+            m_xdgSurface->m_window->resizeFromApplyConfigure(m_normalSize);
+    } else {
+        m_xdgSurface->m_window->resizeFromApplyConfigure(m_pending.size);
+    }
+
     QSize windowGeometrySize = m_xdgSurface->m_window->window()->frameGeometry().size();
     m_xdgSurface->set_window_geometry(0, 0, windowGeometrySize.width(), windowGeometrySize.height());
     m_applied = m_pending;
+    qCDebug(lcQpaWayland) << "Applied pending zxdg_toplevel_v6 configure event:" << m_applied.size << m_applied.states;
 }
 
 void QWaylandXdgSurfaceV6::Toplevel::zxdg_toplevel_v6_configure(int32_t width, int32_t height, wl_array *states)
@@ -174,14 +181,14 @@ QWaylandXdgSurfaceV6::Popup::~Popup()
 
     if (m_grabbing) {
         auto *shell = m_xdgSurface->m_shell;
-        Q_ASSERT(shell->m_topmostPopup == this);
-        shell->m_topmostPopup = m_parent->m_popup;
+        Q_ASSERT(shell->m_topmostGrabbingPopup == this);
+        shell->m_topmostGrabbingPopup = m_parent->m_popup;
     }
 }
 
 void QWaylandXdgSurfaceV6::Popup::grab(QWaylandInputDevice *seat, uint serial)
 {
-    m_xdgSurface->m_shell->m_topmostPopup = this;
+    m_xdgSurface->m_shell->m_topmostGrabbingPopup = this;
     zxdg_popup_v6::grab(seat->wl_seat(), serial);
     m_grabbing = true;
 }
@@ -201,8 +208,10 @@ QWaylandXdgSurfaceV6::QWaylandXdgSurfaceV6(QWaylandXdgShellV6 *shell, ::zxdg_sur
     Qt::WindowType type = window->window()->type();
     auto *transientParent = window->transientParent();
 
-    if ((type == Qt::Popup || type == Qt::ToolTip) && transientParent && display->lastInputDevice()) {
-        setPopup(transientParent, display->lastInputDevice(), display->lastInputSerial(), type == Qt::Popup);
+    if (type == Qt::ToolTip && transientParent) {
+        setPopup(transientParent);
+    } else if (type == Qt::Popup && transientParent && display->lastInputDevice()) {
+        setGrabPopup(transientParent, display->lastInputDevice(), display->lastInputSerial());
     } else {
         setToplevel();
         if (transientParent) {
@@ -254,9 +263,14 @@ void QWaylandXdgSurfaceV6::setAppId(const QString &appId)
         m_toplevel->set_app_id(appId);
 }
 
+bool QWaylandXdgSurfaceV6::isExposed() const
+{
+    return m_configured || m_pendingConfigureSerial;
+}
+
 bool QWaylandXdgSurfaceV6::handleExpose(const QRegion &region)
 {
-    if (!m_configured && !region.isEmpty()) {
+    if (!isExposed() && !region.isEmpty()) {
         m_exposeRegion = region;
         return true;
     }
@@ -295,18 +309,11 @@ void QWaylandXdgSurfaceV6::setToplevel()
     m_toplevel = new Toplevel(this);
 }
 
-void QWaylandXdgSurfaceV6::setPopup(QWaylandWindow *parent, QWaylandInputDevice *device, int serial, bool grab)
+void QWaylandXdgSurfaceV6::setPopup(QWaylandWindow *parent)
 {
     Q_ASSERT(!m_toplevel && !m_popup);
 
     auto parentXdgSurface = static_cast<QWaylandXdgSurfaceV6 *>(parent->shellSurface());
-
-    auto *top = m_shell->m_topmostPopup;
-    if (grab && top && top->m_xdgSurface != parentXdgSurface) {
-        qCWarning(lcQpaWayland) << "setPopup called for a surface that was not the topmost popup, positions might be off.";
-        parentXdgSurface = top->m_xdgSurface;
-        parent = top->m_xdgSurface->m_window;
-    }
 
     auto positioner = new QtWayland::zxdg_positioner_v6(m_shell->create_positioner());
     // set_popup expects a position relative to the parent
@@ -323,16 +330,35 @@ void QWaylandXdgSurfaceV6::setPopup(QWaylandWindow *parent, QWaylandInputDevice 
     m_popup = new Popup(this, parentXdgSurface, positioner);
     positioner->destroy();
     delete positioner;
-    if (grab)
-        m_popup->grab(device, serial);
+}
+
+void QWaylandXdgSurfaceV6::setGrabPopup(QWaylandWindow *parent, QWaylandInputDevice *device, int serial)
+{
+    auto parentXdgSurface = static_cast<QWaylandXdgSurfaceV6 *>(parent->shellSurface());
+    auto *top = m_shell->m_topmostGrabbingPopup;
+
+    if (top && top->m_xdgSurface != parentXdgSurface) {
+        qCWarning(lcQpaWayland) << "setGrabPopup called for a surface that was not the topmost popup, positions might be off.";
+        parent = top->m_xdgSurface->m_window;
+    }
+    setPopup(parent);
+    m_popup->grab(device, serial);
 }
 
 void QWaylandXdgSurfaceV6::zxdg_surface_v6_configure(uint32_t serial)
 {
-    m_window->applyConfigureWhenPossible();
     m_pendingConfigureSerial = serial;
+    if (!m_configured) {
+        // We have to do the initial applyConfigure() immediately, since that is the expose.
+        applyConfigure();
+    } else {
+        // Later configures are probably resizes, so we have to queue them up for a time when we
+        // are not painting to the window.
+        m_window->applyConfigureWhenPossible();
+    }
+
     if (!m_exposeRegion.isEmpty()) {
-        QWindowSystemInterface::handleExposeEvent(m_window->window(), m_exposeRegion);
+        m_window->handleExpose(m_exposeRegion);
         m_exposeRegion = QRegion();
     }
 }

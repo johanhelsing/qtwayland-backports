@@ -62,8 +62,6 @@
 #include <QtCore/QSize>
 #include <QtGui/QRegion>
 
-#include <wayland-client.h>
-
 QT_BEGIN_NAMESPACE
 
 class QWindow;
@@ -88,7 +86,7 @@ public:
     void setAppId(const QString &appId) override;
     void setWindowFlags(Qt::WindowFlags flags) override;
 
-    bool isExposed() const override { return m_configured; }
+    bool isExposed() const override;
     bool handleExpose(const QRegion &) override;
     bool handlesActiveState() const { return m_toplevel; }
     void applyConfigure() override;
@@ -140,7 +138,8 @@ private:
     };
 
     void setToplevel();
-    void setPopup(QWaylandWindow *parent, QWaylandInputDevice *device, int serial, bool grab);
+    void setPopup(QWaylandWindow *parent);
+    void setGrabPopup(QWaylandWindow *parent, QWaylandInputDevice *device, int serial);
 
     QWaylandXdgShell *m_shell = nullptr;
     QWaylandWindow *m_window = nullptr;
@@ -171,7 +170,7 @@ private:
 
     QWaylandDisplay *m_display = nullptr;
     QScopedPointer<QWaylandXdgDecorationManagerV1> m_xdgDecorationManager;
-    QWaylandXdgSurface::Popup *m_topmostPopup = nullptr;
+    QWaylandXdgSurface::Popup *m_topmostGrabbingPopup = nullptr;
 
     friend class QWaylandXdgSurface;
 };

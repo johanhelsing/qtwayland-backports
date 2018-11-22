@@ -18,6 +18,9 @@ CONFIG += link_pkgconfig wayland-scanner
 qtConfig(xkbcommon-evdev): \
     QMAKE_USE_PRIVATE += xkbcommon_evdev
 
+qtHaveModule(linuxaccessibility_support_private): \
+    QT += linuxaccessibility_support_private
+
 QMAKE_USE += wayland-client
 
 INCLUDEPATH += $$PWD/../shared
@@ -29,9 +32,7 @@ WAYLANDCLIENTSOURCES += \
             ../extensions/qt-windowmanager.xml \
             ../3rdparty/protocol/text-input-unstable-v2.xml \
             ../3rdparty/protocol/xdg-output-unstable-v1.xml \
-
-WAYLANDCLIENTSOURCES_SYSTEM += \
-            ../3rdparty/protocol/wayland.xml \
+            ../3rdparty/protocol/wayland.xml
 
 SOURCES +=  qwaylandintegration.cpp \
             qwaylandnativeinterface.cpp \

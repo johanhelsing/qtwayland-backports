@@ -67,12 +67,15 @@ private slots:
     void seatCreation();
     void seatKeyboardFocus();
     void seatMouseFocus();
+    void inputRegion();
+    void defaultInputRegionHiDpi();
     void singleClient();
     void multipleClients();
     void geometry();
     void modes();
     void sizeFollowsWindow();
     void mapSurface();
+    void mapSurfaceHiDpi();
     void frameCallback();
     void removeOutput();
 
@@ -409,6 +412,7 @@ void tst_WaylandCompositor::mapSurface()
     QSignalSpy hasContentSpy(waylandSurface, SIGNAL(hasContentChanged()));
 
     QCOMPARE(waylandSurface->size(), QSize());
+    QCOMPARE(waylandSurface->destinationSize(), QSize());
     QCOMPARE(waylandSurface->hasContent(), false);
 
     QSize size(256, 256);
@@ -420,9 +424,85 @@ void tst_WaylandCompositor::mapSurface()
     wl_surface_damage(surface, 0, 0, size.width(), size.height());
     wl_surface_commit(surface);
 
-    QTRY_COMPARE(waylandSurface->size(), size);
-    QTRY_COMPARE(waylandSurface->hasContent(), true);
     QTRY_COMPARE(hasContentSpy.count(), 1);
+    QCOMPARE(waylandSurface->hasContent(), true);
+    QCOMPARE(waylandSurface->size(), size);
+    QCOMPARE(waylandSurface->destinationSize(), size);
+
+    wl_surface_destroy(surface);
+}
+
+void tst_WaylandCompositor::mapSurfaceHiDpi()
+{
+    TestCompositor compositor;
+    compositor.create();
+
+    MockClient client;
+
+    wl_surface *surface = client.createSurface();
+    QTRY_COMPARE(compositor.surfaces.size(), 1);
+
+    QWaylandSurface *waylandSurface = compositor.surfaces.at(0);
+
+    constexpr int bufferScale = 2;
+    const QSize surfaceSize(128, 128);
+    const QSize bufferSize = surfaceSize * bufferScale;
+    const QPoint attachOffset(1, 2); // in surface-local coordinates
+
+    client.createShellSurface(surface);
+    ShmBuffer buffer(bufferSize, client.shm);
+    wl_surface_attach(surface, buffer.handle, attachOffset.x(), attachOffset.y());
+    wl_surface_set_buffer_scale(surface, bufferScale);
+    // wl_surface_damage is given in surface coordinates
+    wl_surface_damage(surface, 0, 0, surfaceSize.width(), surfaceSize.height());
+
+    auto verifyComittedState = [=]() {
+        QCOMPARE(waylandSurface->size(), bufferSize);
+        QCOMPARE(waylandSurface->destinationSize(), surfaceSize);
+        QCOMPARE(waylandSurface->bufferScale(), bufferScale);
+        QCOMPARE(waylandSurface->hasContent(), true);
+    };
+
+    QObject::connect(waylandSurface, &QWaylandSurface::damaged, [=] (const QRegion &damage) {
+        // Currently, QWaylandSurface::size returns the size in pixels.
+        // Should be fixed or removed for Qt 6.
+        QCOMPARE(damage, QRect(QPoint(), surfaceSize));
+        verifyComittedState();
+    });
+    QSignalSpy damagedSpy(waylandSurface, SIGNAL(damaged(const QRegion &)));
+
+    QObject::connect(waylandSurface, &QWaylandSurface::hasContentChanged, verifyComittedState);
+    QSignalSpy hasContentSpy(waylandSurface, SIGNAL(hasContentChanged()));
+
+    QObject::connect(waylandSurface, &QWaylandSurface::sizeChanged, verifyComittedState);
+    QSignalSpy sizeSpy(waylandSurface, SIGNAL(sizeChanged()));
+
+    QObject::connect(waylandSurface, &QWaylandSurface::destinationSizeChanged, verifyComittedState);
+    QSignalSpy destinationSizeSpy(waylandSurface, SIGNAL(destinationSizeChanged()));
+
+    QObject::connect(waylandSurface, &QWaylandSurface::bufferScaleChanged, verifyComittedState);
+    QSignalSpy bufferScaleSpy(waylandSurface, SIGNAL(bufferScaleChanged()));
+
+    QObject::connect(waylandSurface, &QWaylandSurface::offsetForNextFrame, [=](const QPoint &offset) {
+        QCOMPARE(offset, attachOffset);
+        verifyComittedState();
+    });
+    QSignalSpy offsetSpy(waylandSurface, SIGNAL(offsetForNextFrame(const QPoint &)));
+
+    // No state should be applied before the commit
+    QCOMPARE(waylandSurface->size(), QSize());
+    QCOMPARE(waylandSurface->destinationSize(), QSize());
+    QCOMPARE(waylandSurface->hasContent(), false);
+    QCOMPARE(waylandSurface->bufferScale(), 1);
+    QCOMPARE(offsetSpy.count(), 0);
+
+    wl_surface_commit(surface);
+
+    QTRY_COMPARE(hasContentSpy.count(), 1);
+    QTRY_COMPARE(sizeSpy.count(), 1);
+    QTRY_COMPARE(destinationSizeSpy.count(), 1);
+    QTRY_COMPARE(bufferScaleSpy.count(), 1);
+    QTRY_COMPARE(offsetSpy.count(), 1);
 
     wl_surface_destroy(surface);
 }
@@ -648,6 +728,88 @@ void tst_WaylandCompositor::seatMouseFocus()
     QTRY_VERIFY(!compositor.defaultSeat()->mouseFocus());
 
     delete view;
+}
+
+void tst_WaylandCompositor::inputRegion()
+{
+    TestCompositor compositor(true);
+    compositor.create();
+
+    // Create client after all the seats have been set up as the mock client
+    // does not dynamically listen to new seats
+    MockClient client;
+    wl_surface *surface = client.createSurface();
+
+    // We need to attach a buffer, since QWaylandSurface::inputRegionContains will will return
+    // false for coordinates outside the buffer (so don't let it be 0x0).
+    QSize size(16, 16);
+    ShmBuffer buffer(size, client.shm);
+    wl_surface_attach(surface, buffer.handle, 0, 0);
+    wl_surface_damage(surface, 0, 0, size.width(), size.height());
+
+    // Set the input region
+    wl_region *region = wl_compositor_create_region(client.compositor);
+    wl_region_add(region, 1, 2, 3, 4);
+    wl_surface_set_input_region(surface, region);
+
+    // Commit everything
+    wl_surface_commit(surface);
+
+    QTRY_COMPARE(compositor.surfaces.size(), 1);
+    QWaylandSurface *waylandSurface = compositor.surfaces.at(0);
+
+    QVERIFY(waylandSurface->inputRegionContains(QPoint(1, 2)));
+    QVERIFY(waylandSurface->inputRegionContains(QPoint(3, 5)));
+    QVERIFY(!waylandSurface->inputRegionContains(QPoint(0, 0)));
+    QVERIFY(!waylandSurface->inputRegionContains(QPoint(1, 6)));
+    QVERIFY(!waylandSurface->inputRegionContains(QPoint(4, 2)));
+
+    // Setting a nullptr input region means we want all events
+    wl_surface_set_input_region(surface, nullptr);
+    wl_surface_commit(surface);
+
+    QTRY_VERIFY(waylandSurface->inputRegionContains(QPoint(0, 0)));
+    QVERIFY(waylandSurface->inputRegionContains(QPoint(1, 6)));
+    QVERIFY(waylandSurface->inputRegionContains(QPoint(4, 2)));
+
+    // But points outside the buffer should still return false
+    QVERIFY(!waylandSurface->inputRegionContains(QPoint(-1, -1)));
+    QVERIFY(!waylandSurface->inputRegionContains(QPoint(16, 16)));
+
+    // Setting an empty region means we want no events
+    wl_region *emptyRegion = wl_compositor_create_region(client.compositor);
+    wl_surface_set_input_region(surface, emptyRegion);
+    wl_surface_commit(surface);
+
+    QTRY_VERIFY(!waylandSurface->inputRegionContains(QPoint(0, 0)));
+    QVERIFY(!waylandSurface->inputRegionContains(QPoint(1, 2)));
+}
+
+void tst_WaylandCompositor::defaultInputRegionHiDpi()
+{
+    TestCompositor compositor(true);
+    compositor.create();
+
+    MockClient client;
+    wl_surface *surface = client.createSurface();
+
+    int bufferScale = 2;
+    QSize surfaceSize(16, 16);
+    QSize bufferSize = surfaceSize * bufferScale;
+    ShmBuffer buffer(bufferSize, client.shm);
+    wl_surface_attach(surface, buffer.handle, 0, 0);
+    wl_surface_damage(surface, 0, 0, surfaceSize.width(), surfaceSize.height());
+    wl_surface_set_buffer_scale(surface, bufferScale);
+    wl_surface_commit(surface);
+
+    QTRY_COMPARE(compositor.surfaces.size(), 1);
+    QWaylandSurface *waylandSurface = compositor.surfaces.at(0);
+
+    QCOMPARE(waylandSurface->bufferScale(), bufferScale);
+    QVERIFY(waylandSurface->inputRegionContains(QPoint(0, 0)));
+    QVERIFY(waylandSurface->inputRegionContains(QPoint(15, 15)));
+    QVERIFY(!waylandSurface->inputRegionContains(QPoint(-1, -1)));
+    QVERIFY(!waylandSurface->inputRegionContains(QPoint(16, 16)));
 }
 
 class XdgTestCompositor: public TestCompositor {

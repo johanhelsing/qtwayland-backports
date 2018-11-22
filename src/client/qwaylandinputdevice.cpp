@@ -238,7 +238,6 @@ void QWaylandInputDevice::seat_capabilities(uint32_t caps)
     if (caps & WL_SEAT_CAPABILITY_POINTER && !mPointer) {
         mPointer = createPointer(this);
         mPointer->init(get_pointer());
-        pointerSurface = mQDisplay->createSurface(this);
     } else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && mPointer) {
         delete mPointer;
         mPointer = nullptr;
@@ -297,7 +296,6 @@ void QWaylandInputDevice::setDataDevice(QWaylandDataDevice *device)
 
 QWaylandDataDevice *QWaylandInputDevice::dataDevice() const
 {
-    Q_ASSERT(mDataDevice);
     return mDataDevice;
 }
 #endif
@@ -419,6 +417,9 @@ void QWaylandInputDevice::setCursor(struct wl_buffer *buffer, const QPoint &hotS
             mPointer->set_cursor(mPointer->mEnterSerial, nullptr, 0, 0);
             return;
         }
+
+        if (!pointerSurface)
+            pointerSurface = mQDisplay->createSurface(this);
 
         mPointer->set_cursor(mPointer->mEnterSerial, pointerSurface,
                              hotSpot.x(), hotSpot.y());
@@ -782,7 +783,7 @@ void QWaylandInputDevice::Keyboard::keyboard_key(uint32_t serial, uint32_t time,
 #if QT_CONFIG(xkbcommon_evdev)
         mRepeatSym = sym;
 #endif
-        mRepeatTimer.setInterval(400);
+        mRepeatTimer.setInterval(mRepeatDelay);
         mRepeatTimer.start();
     } else if (mRepeatCode == code) {
         mRepeatTimer.stop();
@@ -791,7 +792,7 @@ void QWaylandInputDevice::Keyboard::keyboard_key(uint32_t serial, uint32_t time,
 
 void QWaylandInputDevice::Keyboard::repeatKey()
 {
-    mRepeatTimer.setInterval(25);
+    mRepeatTimer.setInterval(mRepeatRate);
     sendKey(mFocus->window(), mRepeatTime, QEvent::KeyRelease, mRepeatKey, modifiers(), mRepeatCode,
 #if QT_CONFIG(xkbcommon_evdev)
             mRepeatSym, mNativeModifiers,
@@ -829,6 +830,12 @@ void QWaylandInputDevice::Keyboard::keyboard_modifiers(uint32_t serial,
     Q_UNUSED(mods_locked);
     Q_UNUSED(group);
 #endif
+}
+
+void QWaylandInputDevice::Keyboard::keyboard_repeat_info(int32_t rate, int32_t delay)
+{
+    mRepeatRate = rate;
+    mRepeatDelay = delay;
 }
 
 void QWaylandInputDevice::Touch::touch_down(uint32_t serial,

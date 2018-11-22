@@ -440,7 +440,7 @@ bool Scanner::process()
         printf("#ifndef %s\n", inclusionGuard.constData());
         printf("#define %s\n", inclusionGuard.constData());
         printf("\n");
-        printf("#include \"wayland-server.h\"\n");
+        printf("#include \"wayland-server-core.h\"\n");
         if (m_headerPath.isEmpty())
             printf("#include \"wayland-%s-server-protocol.h\"\n", QByteArray(m_protocolName).replace('_', '-').constData());
         else
@@ -504,6 +504,7 @@ bool Scanner::process()
             printf("            virtual ~Resource() {}\n");
             printf("\n");
             printf("            %s *%s_object;\n", interfaceName, interfaceNameStripped);
+            printf("            %s *object() { return %s_object; } \n", interfaceName, interfaceNameStripped);
             printf("            struct ::wl_resource *handle;\n");
             printf("\n");
             printf("            struct ::wl_client *client() const { return wl_resource_get_client(handle); }\n");
@@ -768,6 +769,7 @@ bool Scanner::process()
             printf("    void %s::destroy_func(struct ::wl_resource *client_resource)\n", interfaceName);
             printf("    {\n");
             printf("        Resource *resource = Resource::fromResource(client_resource);\n");
+            printf("        Q_ASSERT(resource);\n");
             printf("        %s *that = resource->%s_object;\n", interfaceName, interfaceNameStripped);
             printf("        that->m_resource_map.remove(resource->client(), resource);\n");
             printf("        that->%s_destroy_resource(resource);\n", interfaceNameStripped);
@@ -938,6 +940,8 @@ bool Scanner::process()
         printf("#include <QByteArray>\n");
         printf("#include <QString>\n");
         printf("\n");
+        printf("struct wl_registry;\n");
+        printf("\n");
         printf("QT_BEGIN_NAMESPACE\n");
         printf("QT_WARNING_PUSH\n");
         printf("QT_WARNING_DISABLE_GCC(\"-Wmissing-field-initializers\")\n");
@@ -1055,6 +1059,22 @@ bool Scanner::process()
         printf("QT_WARNING_DISABLE_GCC(\"-Wmissing-field-initializers\")\n");
         printf("\n");
         printf("namespace QtWayland {\n");
+        printf("\n");
+
+        // wl_registry_bind is part of the protocol, so we can't use that... instead we use core
+        // libwayland API to do the same thing a wayland-scanner generated wl_registry_bind would.
+        printf("static inline void *wlRegistryBind(struct ::wl_registry *registry, uint32_t name, const struct ::wl_interface *interface, uint32_t version)\n");
+        printf("{\n");
+        printf("    const uint32_t bindOpCode = 0;\n");
+        printf("#if (WAYLAND_VERSION_MAJOR == 1 && WAYLAND_VERSION_MINOR > 10) || WAYLAND_VERSION_MAJOR > 1\n");
+        printf("    return (void *) wl_proxy_marshal_constructor_versioned((struct wl_proxy *) registry,\n");
+        printf("        bindOpCode, interface, version, name, interface->name, version, nullptr);\n");
+        printf("#else\n");
+        printf("    return (void *) wl_proxy_marshal_constructor((struct wl_proxy *) registry,\n");
+        printf("        bindOpCode, interface, name, interface->name, version, nullptr);\n");
+        printf("#endif\n");
+        printf("}\n");
+        printf("\n");
         for (int j = 0; j < interfaces.size(); ++j) {
             const WaylandInterface &interface = interfaces.at(j);
 
@@ -1095,7 +1115,7 @@ bool Scanner::process()
 
             printf("    void %s::init(struct ::wl_registry *registry, int id, int version)\n", interfaceName);
             printf("    {\n");
-            printf("        m_%s = static_cast<struct ::%s *>(wl_registry_bind(registry, id, &%s_interface, version));\n", interfaceName, interfaceName, interfaceName);
+            printf("        m_%s = static_cast<struct ::%s *>(wlRegistryBind(registry, id, &%s_interface, version));\n", interfaceName, interfaceName, interfaceName);
             if (hasEvents)
                 printf("        init_listener();\n");
             printf("    }\n");

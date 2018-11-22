@@ -81,7 +81,10 @@ class Q_WAYLAND_COMPOSITOR_EXPORT QWaylandSurface : public QWaylandObject
     Q_OBJECT
     Q_DECLARE_PRIVATE(QWaylandSurface)
     Q_PROPERTY(QWaylandClient *client READ client CONSTANT)
-    Q_PROPERTY(QSize size READ size NOTIFY sizeChanged)
+    Q_PROPERTY(QSize destinationSize READ destinationSize NOTIFY destinationSizeChanged)
+#if QT_DEPRECATED_SINCE(5, 13)
+    Q_PROPERTY(QSize size READ size NOTIFY sizeChanged) // Qt 6: Remove
+#endif
     Q_PROPERTY(int bufferScale READ bufferScale NOTIFY bufferScaleChanged)
     Q_PROPERTY(Qt::ScreenOrientation contentOrientation READ contentOrientation NOTIFY contentOrientationChanged)
     Q_PROPERTY(QWaylandSurface::Origin origin READ origin NOTIFY originChanged)
@@ -110,7 +113,11 @@ public:
 
     bool hasContent() const;
 
-    QSize size() const;
+    QSize destinationSize() const;
+#if QT_DEPRECATED_SINCE(5, 13)
+    QT_DEPRECATED QSize size() const;
+#endif
+    QSize bufferSize() const;
     int bufferScale() const;
 
     Qt::ScreenOrientation contentOrientation() const;
@@ -155,7 +162,11 @@ Q_SIGNALS:
     void damaged(const QRegion &rect);
     void parentChanged(QWaylandSurface *newParent, QWaylandSurface *oldParent);
     void childAdded(QWaylandSurface *child);
-    void sizeChanged();
+    void destinationSizeChanged();
+#if QT_DEPRECATED_SINCE(5, 13)
+    QT_DEPRECATED void sizeChanged();
+#endif
+    void bufferSizeChanged();
     void bufferScaleChanged();
     void offsetForNextFrame(const QPoint &offset);
     void contentOrientationChanged();

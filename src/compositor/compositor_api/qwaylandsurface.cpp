@@ -59,6 +59,7 @@
 #include <QtWaylandCompositor/private/qwaylandcompositor_p.h>
 #include <QtWaylandCompositor/private/qwaylandview_p.h>
 #include <QtWaylandCompositor/private/qwaylandseat_p.h>
+#include <QtWaylandCompositor/private/qwaylandutils_p.h>
 
 #include <QtCore/private/qobject_p.h>
 
@@ -141,25 +142,6 @@ QWaylandSurfacePrivate::~QWaylandSurfacePrivate()
         c->destroy();
 }
 
-void QWaylandSurfacePrivate::setSize(const QSize &s)
-{
-    Q_Q(QWaylandSurface);
-    if (size != s) {
-        opaqueRegion = QRegion();
-        size = s;
-        q->sizeChanged();
-    }
-}
-
-void QWaylandSurfacePrivate::setBufferScale(int scale)
-{
-    Q_Q(QWaylandSurface);
-    if (scale == bufferScale)
-        return;
-    bufferScale = scale;
-    emit q->bufferScaleChanged();
-}
-
 void QWaylandSurfacePrivate::removeFrameCallback(QtWayland::FrameCallback *callback)
 {
     pendingFrameCallbacks.removeOne(callback);
@@ -235,7 +217,7 @@ void QWaylandSurfacePrivate::surface_frame(Resource *resource, uint32_t callback
 
 void QWaylandSurfacePrivate::surface_set_opaque_region(Resource *, struct wl_resource *region)
 {
-    opaqueRegion = region ? QtWayland::Region::fromResource(region)->region() : QRegion();
+    pending.opaqueRegion = region ? QtWayland::Region::fromResource(region)->region() : QRegion();
 }
 
 void QWaylandSurfacePrivate::surface_set_input_region(Resource *, struct wl_resource *region)
@@ -251,42 +233,62 @@ void QWaylandSurfacePrivate::surface_commit(Resource *)
 {
     Q_Q(QWaylandSurface);
 
+    // Needed in order to know whether we want to emit signals later
+    QSize oldBufferSize = bufferSize;
+    QSize oldDestinationSize = destinationSize;
+    bool oldHasContent = hasContent;
+    int oldBufferScale = bufferScale;
+
+    // Update all internal state
     if (pending.buffer.hasBuffer() || pending.newlyAttached)
         bufferRef = pending.buffer;
-
-    auto buffer = bufferRef.buffer();
-    if (buffer)
-        buffer->setCommitted(pending.damage);
-
-    setSize(bufferRef.size());
-    damage = pending.damage.intersected(QRect(QPoint(), size));
-
-    for (int i = 0; i < views.size(); i++) {
-        views.at(i)->bufferCommitted(bufferRef, damage);
-    }
-
-    emit q->damaged(damage);
-
-    bool oldHasContent = hasContent;
+    bufferScale = pending.bufferScale;
+    bufferSize = bufferRef.size();
+    destinationSize = pending.destinationSize.isEmpty() ? bufferSize / bufferScale : pending.destinationSize;
+    damage = pending.damage.intersected(QRect(QPoint(), destinationSize));
     hasContent = bufferRef.hasContent();
-    if (oldHasContent != hasContent)
-        emit q->hasContentChanged();
+    frameCallbacks << pendingFrameCallbacks;
+    inputRegion = pending.inputRegion.intersected(QRect(QPoint(), destinationSize));
+    opaqueRegion = pending.opaqueRegion.intersected(QRect(QPoint(), destinationSize));
+    QPoint offsetForNextFrame = pending.offset;
 
-    if (!pending.offset.isNull())
-        emit q->offsetForNextFrame(pending.offset);
-
-    setBufferScale(pending.bufferScale);
-
-
+    // Clear per-commit state
     pending.buffer = QWaylandBufferRef();
     pending.offset = QPoint();
     pending.newlyAttached = false;
     pending.damage = QRegion();
-
-    frameCallbacks << pendingFrameCallbacks;
     pendingFrameCallbacks.clear();
 
-    inputRegion = pending.inputRegion.intersected(QRect(QPoint(), size));
+    // Notify buffers and views
+    if (auto *buffer = bufferRef.buffer())
+        buffer->setCommitted(damage);
+    for (auto *view : qAsConst(views))
+        view->bufferCommitted(bufferRef, damage);
+
+    // Now all double-buffered state has been applied so it's safe to emit general signals
+    // i.e. we won't have inconsistensies such as mismatched surface size and buffer scale in
+    // signal handlers.
+
+    emit q->damaged(damage);
+
+    if (oldBufferSize != bufferSize) {
+        emit q->bufferSizeChanged();
+#if QT_DEPRECATED_SINCE(5, 13)
+        emit q->sizeChanged();
+#endif
+    }
+
+    if (oldBufferScale != bufferScale)
+        emit q->bufferScaleChanged();
+
+    if (oldDestinationSize != destinationSize)
+        emit q->destinationSizeChanged();
+
+    if (oldHasContent != hasContent)
+        emit q->hasContentChanged();
+
+    if (!offsetForNextFrame.isNull())
+        emit q->offsetForNextFrame(offsetForNextFrame);
 
     emit q->redraw();
 }
@@ -456,21 +458,76 @@ bool QWaylandSurface::hasContent() const
 }
 
 /*!
- * \qmlproperty size QtWaylandCompositor::WaylandSurface::size
+ * \qmlproperty size QtWaylandCompositor::WaylandSurface::destinationSize
  *
- * This property holds the WaylandSurface's size in pixels.
+ * This property holds the size of this WaylandSurface in surface coordinates.
+ *
+ * \sa bufferScale
+ * \sa bufferSize
+ */
+
+/*!
+ * \property QWaylandSurface::destinationSize
+ *
+ * This property holds the size of this WaylandSurface in surface coordinates.
+ *
+ * \sa bufferScale
+ * \sa bufferSize
+ */
+QSize QWaylandSurface::destinationSize() const
+{
+    Q_D(const QWaylandSurface);
+    return d->destinationSize;
+}
+
+/*!
+ * \qmlproperty size QtWaylandCompositor::WaylandSurface::bufferSize
+ *
+ * This property holds the size of the current buffer of this WaylandSurface in pixels,
+ * not in surface coordinates.
+ *
+ * For the size in surface coordinates, use \l destinationSize instead.
+ *
+ * \sa destinationSize
+ * \sa bufferScale
+ */
+
+/*!
+ * \property QWaylandSurface::bufferSize
+ *
+ * This property holds the size of the current buffer of this QWaylandSurface in pixels,
+ * not in surface coordinates.
+ *
+ * For the size in surface coordinates, use \l destinationSize instead.
+ *
+ * \sa destinationSize
+ * \sa bufferScale
+ */
+QSize QWaylandSurface::bufferSize() const
+{
+    Q_D(const QWaylandSurface);
+    return d->bufferSize;
+}
+
+#if QT_DEPRECATED_SINCE(5, 13)
+/*!
+ * \qmlproperty size QtWaylandCompositor::WaylandSurface::size
+ * \obsolete use bufferSize or destinationSize instead
+ *
+ * This property has been deprecated, use \l bufferSize or \l destinationSize instead.
  */
 
 /*!
  * \property QWaylandSurface::size
+ * \obsolete use bufferSize or destinationSize instead
  *
- * This property holds the QWaylandSurface's size in pixels.
+ * This property has been deprecated, use \l bufferSize or \l destinationSize instead.
  */
 QSize QWaylandSurface::size() const
 {
-    Q_D(const QWaylandSurface);
-    return d->size;
+    return bufferSize();
 }
+#endif
 
 /*!
  * \qmlproperty size QtWaylandCompositor::WaylandSurface::bufferScale
@@ -737,10 +794,10 @@ QList<QWaylandView *> QWaylandSurface::views() const
 /*!
  * Returns the QWaylandSurface corresponding to the Wayland resource \a res.
  */
-QWaylandSurface *QWaylandSurface::fromResource(::wl_resource *res)
+QWaylandSurface *QWaylandSurface::fromResource(::wl_resource *resource)
 {
-    if (auto *r = QWaylandSurfacePrivate::Resource::fromResource(res))
-        return static_cast<QWaylandSurfacePrivate *>(r->surface_object)->q_func();
+    if (auto p = QtWayland::fromResource<QWaylandSurfacePrivate *>(resource))
+        return p->q_func();
     return nullptr;
 }
 
