@@ -18,5 +18,3 @@ qtConfig(wayland-shm-emulation-server-buffer): \
     SUBDIRS += shm-emulation-server
 qtConfig(wayland-dmabuf-server-buffer): \
     SUBDIRS += dmabuf-server
-qtConfig(wayland-vulkan-server-buffer): \
-    SUBDIRS += vulkan-server
