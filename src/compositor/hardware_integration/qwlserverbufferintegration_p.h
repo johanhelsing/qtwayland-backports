@@ -75,8 +75,7 @@ class Q_WAYLAND_COMPOSITOR_EXPORT ServerBuffer
 public:
     enum Format {
         RGBA32,
-        A8,
-        Custom
+        A8
     };
 
     ServerBuffer(const QSize &size, ServerBuffer::Format format);
@@ -106,13 +105,6 @@ public:
 
     virtual bool supportsFormat(ServerBuffer::Format format) const = 0;
     virtual ServerBuffer *createServerBufferFromImage(const QImage &qimage, ServerBuffer::Format format) = 0;
-    virtual ServerBuffer *createServerBufferFromData(const QByteArray &data, const QSize &size, uint glInternalFormat)
-    {
-        Q_UNUSED(data);
-        Q_UNUSED(size);
-        Q_UNUSED(glInternalFormat);
-        return nullptr;
-    }
 };
 
 }
