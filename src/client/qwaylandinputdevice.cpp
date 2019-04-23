@@ -41,6 +41,7 @@
 
 #include "qwaylandintegration_p.h"
 #include "qwaylandwindow_p.h"
+#include "qwaylandsurface_p.h"
 #include "qwaylandbuffer_p.h"
 #if QT_CONFIG(wayland_datadevice)
 #include "qwaylanddatadevice_p.h"
@@ -190,23 +191,17 @@ QWaylandInputDevice::Pointer::~Pointer()
 
 #if QT_CONFIG(cursor)
 
-class CursorSurface : public QObject, public QtWayland::wl_surface
+class CursorSurface : public QWaylandSurface
 {
 public:
     explicit CursorSurface(QWaylandInputDevice::Pointer *pointer, QWaylandDisplay *display)
-        : m_pointer(pointer)
+        : QWaylandSurface(display)
+        , m_pointer(pointer)
     {
-        init(display->createSurface(this));
         //TODO: When we upgrade to libwayland 1.10, use wl_surface_get_version instead.
         m_version = display->compositorVersion();
-        connect(qApp, &QGuiApplication::screenRemoved, this, [this](QScreen *screen) {
-            int oldScale = outputScale();
-            if (!m_screens.removeOne(static_cast<QWaylandScreen *>(screen->handle())))
-                return;
-
-            if (outputScale() != oldScale)
-                m_pointer->updateCursor();
-        });
+        connect(this, &QWaylandSurface::screensChanged,
+                m_pointer, &QWaylandInputDevice::Pointer::updateCursor);
     }
 
     void hide()
@@ -246,38 +241,11 @@ public:
         return scale;
     }
 
-protected:
-    void surface_enter(struct ::wl_output *output) override
-    {
-        int oldScale = outputScale();
-        auto *screen = QWaylandScreen::fromWlOutput(output);
-        if (m_screens.contains(screen))
-            return;
-
-        m_screens.append(screen);
-
-        if (outputScale() != oldScale)
-            m_pointer->updateCursor();
-    }
-
-    void surface_leave(struct ::wl_output *output) override
-    {
-        int oldScale = outputScale();
-        auto *screen = QWaylandScreen::fromWlOutput(output);
-
-        if (!m_screens.removeOne(screen))
-            return;
-
-        if (outputScale() != oldScale)
-            m_pointer->updateCursor();
-    }
-
 private:
     QWaylandInputDevice::Pointer *m_pointer = nullptr;
     uint m_version = 0;
     uint m_setSerial = 0;
     QPoint m_hotspot;
-    QVector<QWaylandScreen *> m_screens;
 };
 
 QString QWaylandInputDevice::Pointer::cursorThemeName() const
@@ -318,7 +286,7 @@ void QWaylandInputDevice::Pointer::updateCursorTheme()
         while (scale > 1 && arrowPixelSize / scale < cursorSize())
             --scale;
     } else {
-        qWarning(lcQpaWayland) << "Cursor theme does not support the arrow cursor";
+        qCWarning(lcQpaWayland) << "Cursor theme does not support the arrow cursor";
     }
     mCursor.themeBufferScale = scale;
 }
@@ -588,9 +556,9 @@ void QWaylandInputDevice::Pointer::pointer_enter(uint32_t serial, struct wl_surf
     QWaylandWindow *window = QWaylandWindow::fromWlSurface(surface);
 
     if (mFocus) {
-        qWarning(lcQpaWayland) << "The compositor sent a wl_pointer.enter event before sending a"
-                               << "leave event first, this is not allowed by the wayland protocol"
-                               << "attempting to work around it by invalidating the current focus";
+        qCWarning(lcQpaWayland) << "The compositor sent a wl_pointer.enter event before sending a"
+                                << "leave event first, this is not allowed by the wayland protocol"
+                                << "attempting to work around it by invalidating the current focus";
         invalidateFocus();
     }
     mFocus = window;

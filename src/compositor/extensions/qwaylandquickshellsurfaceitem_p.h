@@ -41,6 +41,7 @@
 #define QWAYLANDQUICKSHELLSURFACEITEM_P_H
 
 #include <QtWaylandCompositor/QWaylandQuickShellSurfaceItem>
+#include <QtWaylandCompositor/QWaylandQuickShellIntegration>
 #include <QtWaylandCompositor/private/qwaylandquickitem_p.h>
 #include <QtCore/QBasicTimer>
 
@@ -59,7 +60,6 @@ QT_BEGIN_NAMESPACE
 // We mean it.
 //
 
-class QWaylandQuickShellIntegration;
 class QWaylandShellSurface;
 class QWaylandQuickShellSurfaceItem;
 
@@ -75,15 +75,6 @@ public:
     QWaylandShellSurface *m_shellSurface = nullptr;
     QQuickItem *m_moveItem = nullptr;
     bool m_autoCreatePopupItems = false;
-};
-
-class Q_WAYLAND_COMPOSITOR_EXPORT QWaylandQuickShellIntegration : public QObject
-{
-    Q_OBJECT
-public:
-    QWaylandQuickShellIntegration(QObject *parent = nullptr) : QObject(parent) {}
-    virtual bool mouseMoveEvent(QMouseEvent *) { return false; }
-    virtual bool mouseReleaseEvent(QMouseEvent *) { return false; }
 };
 
 class Q_WAYLAND_COMPOSITOR_EXPORT QWaylandQuickShellEventFilter : public QObject
