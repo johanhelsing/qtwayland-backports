@@ -74,7 +74,7 @@ qtHaveModule(quick) {
         extensions/qwaylandwlshellintegration_p.h \
         extensions/qwaylandxdgshellv5integration_p.h \
         extensions/qwaylandxdgshellv6integration_p.h \
-        extensions/qwaylandxdgshellintegration_p.h \
+        extensions/qwaylandxdgshellintegration_p.h
 
     SOURCES += \
         extensions/qwaylandquickshellintegration.cpp \
@@ -83,18 +83,7 @@ qtHaveModule(quick) {
         extensions/qwaylandwlshellintegration.cpp \
         extensions/qwaylandxdgshellv5integration.cpp \
         extensions/qwaylandxdgshellv6integration.cpp \
-        extensions/qwaylandxdgshellintegration.cpp \
-
-    qtHaveModule(opengl) {
-        WAYLANDSERVERSOURCES += \
-            ../extensions/qt-texture-sharing-unstable-v1.xml
-
-        HEADERS += \
-            extensions/qwltexturesharingextension_p.h
-
-        SOURCES += \
-            extensions/qwltexturesharingextension.cpp
-    }
+        extensions/qwaylandxdgshellintegration.cpp
 }
 
 include ($$PWD/pregenerated/xdg-shell-v5.pri)

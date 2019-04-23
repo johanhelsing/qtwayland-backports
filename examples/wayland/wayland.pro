@@ -22,8 +22,7 @@ qtHaveModule(quick) {
 
             qtHaveModule(opengl) {
                 SUBDIRS += \
-                    server-buffer \
-                    texture-sharing
+                    server-buffer
             }
     }
     SUBDIRS += hwlayer-compositor
