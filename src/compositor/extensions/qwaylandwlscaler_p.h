@@ -55,7 +55,6 @@
 
 QT_BEGIN_NAMESPACE
 
-#if QT_DEPRECATED_SINCE(5, 13)
 class QWaylandSurface;
 
 class Q_WAYLAND_COMPOSITOR_EXPORT QWaylandWlScalerPrivate
@@ -88,7 +87,6 @@ private:
         QPointer<QWaylandSurface> m_surface = nullptr;
     };
 };
-#endif
 
 QT_END_NAMESPACE
 
