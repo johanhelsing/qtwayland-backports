@@ -5,7 +5,7 @@
 **
 ** This file is part of the QtWaylandCompositor module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
+** $QT_BEGIN_LICENSE:GPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
@@ -14,24 +14,14 @@
 ** and conditions see https://www.qt.io/terms-conditions. For further
 ** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
 ** GNU General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** General Public License version 3 or (at your option) any later version
+** approved by the KDE Free Qt Foundation. The licenses are as published by
+** the Free Software Foundation and appearing in the file LICENSE.GPL3
 ** included in the packaging of this file. Please review the following
 ** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -40,7 +30,7 @@
 #include "qwaylandxdgshellv5.h"
 #include "qwaylandxdgshellv5_p.h"
 
-#ifdef QT_WAYLAND_COMPOSITOR_QUICK
+#if QT_CONFIG(wayland_compositor_quick)
 #include "qwaylandxdgshellv5integration_p.h"
 #endif
 #include <QtWaylandCompositor/private/qwaylandutils_p.h>
@@ -601,7 +591,7 @@ QByteArray QWaylandXdgShellV5::interfaceName()
 }
 
 /*!
- * \qmlmethod void QtWaylandCompositor::XdgShellV5::ping()
+ * \qmlmethod void QtWaylandCompositor::XdgShellV5::ping(WaylandClient client)
  *
  * Sends a ping event to the \a client. If the client replies to the event, the
  * pong signal will be emitted.
@@ -794,10 +784,47 @@ void QWaylandXdgShellV5::handleFocusChanged(QWaylandSurface *newSurface, QWaylan
  */
 
 /*!
+    \enum QWaylandXdgSurfaceV5::ResizeEdge
+
+    \value NoneEdge
+           No edge defined.
+    \value TopEdge
+           Top egde.
+    \value BottomEdge
+           Bottom edge.
+    \value LeftEdge
+           Left edge.
+    \value TopLeftEdge
+           Top-left edge.
+    \value BottomLeftEdge
+           Bottom-left edge.
+    \value RightEdge
+           Right edge.
+    \value TopRightEdge
+           Top-right edge.
+    \value BottomRightEdge
+           Bottom-right edge.
+ */
+
+/*!
+ * \fn QWaylandXdgSurfaceV5::setTopLevel()
+ *
+ * This signal is emitted when the parent surface is unset, effectively
+ * making the window top level.
+ */
+
+/*!
  * \qmlsignal QtWaylandCompositor::XdgSurfaceV5::setTopLevel()
  *
  * This signal is emitted when the parent surface is unset, effectively
  * making the window top level.
+ */
+
+/*!
+ * \fn QWaylandXdgSurfaceV5::setTransient()
+ *
+ * This signal is emitted when the parent surface is set, effectively
+ * making the window transient.
  */
 
 /*!
@@ -1317,7 +1344,7 @@ uint QWaylandXdgSurfaceV5::sendResizing(const QSize &maxSize)
     return sendConfigure(maxSize, conf.states);
 }
 
-#ifdef QT_WAYLAND_COMPOSITOR_QUICK
+#if QT_CONFIG(wayland_compositor_quick)
 QWaylandQuickShellIntegration *QWaylandXdgSurfaceV5::createIntegration(QWaylandQuickShellSurfaceItem *item)
 {
     return new QtWayland::XdgShellV5Integration(item);
@@ -1517,7 +1544,7 @@ void QWaylandXdgPopupV5::sendPopupDone()
     d->send_popup_done();
 }
 
-#ifdef QT_WAYLAND_COMPOSITOR_QUICK
+#if QT_CONFIG(wayland_compositor_quick)
 QWaylandQuickShellIntegration *QWaylandXdgPopupV5::createIntegration(QWaylandQuickShellSurfaceItem *item)
 {
     return new QtWayland::XdgPopupV5Integration(item);

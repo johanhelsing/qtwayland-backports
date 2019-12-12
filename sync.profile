@@ -46,10 +46,6 @@
         "^wayland-xdg-shell-client-protocol.h",
         "^wayland-xdg-decoration-unstable-v1-client-protocol.h",
     ],
-    "$basedir/src/plugins/shellintegration/xdg-shell-v5" => [
-        "^qwayland-xdg-shell-unstable-v5.h",
-        "^wayland-xdg-shell-unstable-v5-client-protocol.h",
-    ],
     "$basedir/src/plugins/shellintegration/xdg-shell-v6" => [
         "^qwayland-xdg-shell-unstable-v6.h",
         "^wayland-xdg-shell-unstable-v6-client-protocol.h",
@@ -57,6 +53,7 @@
     "$basedir/src/compositor" => [
         "^qwayland-server-wayland.h",
         "^qwayland-server-hardware-integration.h",
+        "^qwayland-server-idle-inhibit-unstable-v1.h",
         "^qwayland-server-ivi-application.h",
         "^qwayland-server-qt-windowmanager.h",
         "^qwayland-server-qt-key-unstable-v1.h",
@@ -66,9 +63,11 @@
         "^qwayland-server-touch-extension.h",
         "^qwayland-server-viewporter.h",
         "^qwayland-server-xdg-decoration-unstable-v1.h",
+        "^qwayland-server-xdg-output-unstable-v1.h",
         "^qwayland-server-xdg-shell-unstable-v6.h",
         "^qwayland-server-xdg-shell.h",
         "^wayland-hardware-integration-server-protocol.h",
+        "^wayland-idle-inhibit-unstable-v1-server-protocol.h",
         "^wayland-ivi-application-server-protocol.h",
         "^wayland-qt-windowmanager-server-protocol.h",
         "^wayland-qt-key-unstable-v1-server-protocol.h",
@@ -79,6 +78,7 @@
         "^wayland-touch-extension-server-protocol.h",
         "^wayland-wayland-server-protocol.h",
         "^wayland-xdg-decoration-unstable-v1-server-protocol.h",
+        "^wayland-xdg-output-unstable-v1-server-protocol.h",
         "^wayland-xdg-shell-server-protocol.h",
         "^wayland-xdg-shell-unstable-v6-server-protocol.h",
     ],

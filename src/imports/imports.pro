@@ -1,6 +1,6 @@
 TEMPLATE = subdirs
 
-qtHaveModule(quick): {
+qtHaveModule(quick):qtHaveModule(waylandcompositor) {
     SUBDIRS += \
         compositor
 }

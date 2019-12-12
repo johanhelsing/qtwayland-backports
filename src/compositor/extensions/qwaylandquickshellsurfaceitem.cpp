@@ -5,7 +5,7 @@
 **
 ** This file is part of the QtWaylandCompositor module of the Qt Toolkit.
 **
-** $QT_BEGIN_LICENSE:LGPL$
+** $QT_BEGIN_LICENSE:GPL$
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
 ** accordance with the commercial license agreement provided with the
@@ -14,24 +14,14 @@
 ** and conditions see https://www.qt.io/terms-conditions. For further
 ** information use the contact form at https://www.qt.io/contact-us.
 **
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
 ** GNU General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** General Public License version 3 or (at your option) any later version
+** approved by the KDE Free Qt Foundation. The licenses are as published by
+** the Free Software Foundation and appearing in the file LICENSE.GPL3
 ** included in the packaging of this file. Please review the following
 ** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
+** be met: https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -96,7 +86,11 @@ QWaylandQuickShellSurfaceItem::QWaylandQuickShellSurfaceItem(QQuickItem *parent)
 QWaylandQuickShellSurfaceItem::~QWaylandQuickShellSurfaceItem()
 {
     Q_D(QWaylandQuickShellSurfaceItem);
-    delete d->m_shellIntegration;
+
+    if (d->m_shellIntegration) {
+        removeEventFilter(d->m_shellIntegration);
+        delete d->m_shellIntegration;
+    }
 }
 
 /*!
@@ -137,12 +131,15 @@ void QWaylandQuickShellSurfaceItem::setShellSurface(QWaylandShellSurface *shellS
     d->m_shellSurface = shellSurface;
 
     if (d->m_shellIntegration) {
+        removeEventFilter(d->m_shellIntegration);
         delete d->m_shellIntegration;
         d->m_shellIntegration = nullptr;
     }
 
-    if (shellSurface)
+    if (shellSurface) {
         d->m_shellIntegration = shellSurface->createIntegration(this);
+        installEventFilter(d->m_shellIntegration);
+    }
 
     emit shellSurfaceChanged();
 }
@@ -207,86 +204,6 @@ void QWaylandQuickShellSurfaceItem::setAutoCreatePopupItems(bool enabled)
     d->m_autoCreatePopupItems = enabled;
     emit autoCreatePopupItemsChanged();
 }
-
-void QWaylandQuickShellSurfaceItem::touchEvent(QTouchEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->touchEvent(event))
-        QWaylandQuickItem::touchEvent(event);
-}
-
-void QWaylandQuickShellSurfaceItem::hoverEnterEvent(QHoverEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->hoverEnterEvent(event))
-        QWaylandQuickItem::hoverEnterEvent(event);
-}
-
-void QWaylandQuickShellSurfaceItem::hoverLeaveEvent(QHoverEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->hoverLeaveEvent(event))
-        QWaylandQuickItem::hoverLeaveEvent(event);
-}
-
-void QWaylandQuickShellSurfaceItem::hoverMoveEvent(QHoverEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->hoverMoveEvent(event))
-        QWaylandQuickItem::hoverMoveEvent(event);
-}
-
-
-void QWaylandQuickShellSurfaceItem::keyPressEvent(QKeyEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->keyPressEvent(event))
-        QWaylandQuickItem::keyPressEvent(event);
-}
-
-void QWaylandQuickShellSurfaceItem::keyReleaseEvent(QKeyEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->keyReleaseEvent(event))
-        QWaylandQuickItem::keyReleaseEvent(event);
-}
-
-void QWaylandQuickShellSurfaceItem::mouseDoubleClickEvent(QMouseEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->mouseDoubleClickEvent(event))
-        QWaylandQuickItem::mouseDoubleClickEvent(event);
-}
-
-void QWaylandQuickShellSurfaceItem::mouseMoveEvent(QMouseEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->mouseMoveEvent(event))
-        QWaylandQuickItem::mouseMoveEvent(event);
-}
-
-void QWaylandQuickShellSurfaceItem::mousePressEvent(QMouseEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->mousePressEvent(event))
-        QWaylandQuickItem::mousePressEvent(event);
-}
-
-void QWaylandQuickShellSurfaceItem::mouseReleaseEvent(QMouseEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->mouseReleaseEvent(event))
-        QWaylandQuickItem::mouseReleaseEvent(event);
-}
-
-#if QT_CONFIG(wheelevent)
-void QWaylandQuickShellSurfaceItem::wheelEvent(QWheelEvent *event)
-{
-    Q_D(QWaylandQuickShellSurfaceItem);
-    if (!d->m_shellIntegration->wheelEvent(event))
-        QWaylandQuickItem::wheelEvent(event);
-}
-#endif
 
 /*!
 \class QWaylandQuickShellEventFilter

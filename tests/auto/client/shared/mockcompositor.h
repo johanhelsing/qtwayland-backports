@@ -56,10 +56,12 @@ public:
     // Convenience functions
     Output *output(int i = 0) { return getAll<Output>().value(i, nullptr); }
     Surface *surface(int i = 0) { return get<WlCompositor>()->m_surfaces.value(i, nullptr); }
+    Subsurface *subSurface(int i = 0) { return get<SubCompositor>()->m_subsurfaces.value(i, nullptr); }
     XdgSurface *xdgSurface(int i = 0) { return get<XdgWmBase>()->m_xdgSurfaces.value(i, nullptr); }
     XdgToplevel *xdgToplevel(int i = 0) { return get<XdgWmBase>()->toplevel(i); }
     XdgPopup *xdgPopup(int i = 0) { return get<XdgWmBase>()->popup(i); }
     Pointer *pointer() { auto *seat = get<Seat>(); Q_ASSERT(seat); return seat->m_pointer; }
+    Touch *touch() { auto *seat = get<Seat>(); Q_ASSERT(seat); return seat->m_touch; }
     Surface *cursorSurface() { auto *p = pointer(); return p ? p->cursorSurface() : nullptr; }
     Keyboard *keyboard() { auto *seat = get<Seat>(); Q_ASSERT(seat); return seat->m_keyboard; }
     uint sendXdgShellPing();
@@ -83,7 +85,9 @@ public:
 #define QCOMPOSITOR_TEST_MAIN(test) \
 int main(int argc, char **argv) \
 { \
-    setenv("XDG_RUNTIME_DIR", ".", 1); \
+    QTemporaryDir tmpRuntimeDir; \
+    setenv("XDG_RUNTIME_DIR", tmpRuntimeDir.path().toLocal8Bit(), 1); \
+    setenv("XDG_CURRENT_DESKTOP", "qtwaylandtests", 1); \
     setenv("QT_QPA_PLATFORM", "wayland", 1); \
     test tc; \
     QGuiApplication app(argc, argv); \

@@ -41,17 +41,10 @@ public:
 
             removeAll<Seat>();
 
-            uint capabilities = MockCompositor::Seat::capability_pointer;
+            uint capabilities = MockCompositor::Seat::capability_pointer | MockCompositor::Seat::capability_touch;
             int version = 5;
             add<Seat>(capabilities, version);
         });
-    }
-
-    Pointer *pointer()
-    {
-        auto *seat = get<Seat>();
-        Q_ASSERT(seat);
-        return seat->m_pointer;
     }
 };
 
@@ -61,6 +54,8 @@ class tst_seatv5 : public QObject, private SeatV5Compositor
 private slots:
     void cleanup() { QTRY_VERIFY2(isClean(), qPrintable(dirtyMessage())); }
     void bindsToSeat();
+
+    // Pointer tests
     void createsPointer();
     void setsCursorOnEnter();
     void usesEnterSerial();
@@ -69,6 +64,14 @@ private slots:
     void fingerScroll();
     void fingerScrollSlow();
     void wheelDiscreteScroll();
+
+    // Touch tests
+    void createsTouch();
+    void singleTap();
+    void singleTapFloat();
+    void multiTouch();
+    void multiTouchUpAndMotionFrame();
+    void tapAndMoveInSameFrame();
 };
 
 void tst_seatv5::bindsToSeat()
@@ -128,12 +131,8 @@ public:
         QRasterWindow::wheelEvent(event);
 //        qDebug() << event << "angleDelta" << event->angleDelta() << "pixelDelta" << event->pixelDelta();
 
-        if (event->phase() == Qt::ScrollUpdate || event->phase() == Qt::NoScrollPhase) {
-            // Angle delta should always be provided (says docs, but QPA sends compatibility events
-            // for Qt4 with zero angleDelta, and with a delta)
-            QVERIFY(!event->angleDelta().isNull() || event->delta());
-        } else {
-            // Shouldn't have deltas in the other phases
+        if (event->phase() != Qt::ScrollUpdate && event->phase() != Qt::NoScrollPhase) {
+            // Shouldn't have deltas in the these phases
             QCOMPARE(event->angleDelta(), QPoint(0, 0));
             QCOMPARE(event->pixelDelta(), QPoint(0, 0));
         }
@@ -145,13 +144,6 @@ public:
         // We didn't press any buttons
         QCOMPARE(event->buttons(), Qt::NoButton);
 
-        if (!event->angleDelta().isNull()) {
-            if (event->orientation() == Qt::Horizontal)
-                QCOMPARE(event->delta(), event->angleDelta().x());
-            else
-                QCOMPARE(event->delta(), event->angleDelta().y());
-        }
-
         m_events.append(Event{event});
     }
     struct Event // Because I didn't find a convenient way to copy it entirely
@@ -161,14 +153,12 @@ public:
             : phase(event->phase())
             , pixelDelta(event->pixelDelta())
             , angleDelta(event->angleDelta())
-            , orientation(event->orientation())
             , source(event->source())
         {
         }
         const Qt::ScrollPhase phase{};
         const QPoint pixelDelta;
         const QPoint angleDelta; // eights of a degree, positive is upwards, left
-        const Qt::Orientation orientation{};
         const Qt::MouseEventSource source{};
     };
     QVector<Event> m_events;
@@ -178,22 +168,20 @@ void tst_seatv5::simpleAxis_data()
 {
     QTest::addColumn<uint>("axis");
     QTest::addColumn<qreal>("value");
-    QTest::addColumn<Qt::Orientation>("orientation");
     QTest::addColumn<QPoint>("angleDelta");
 
     // Directions in regular windows/linux terms (no "natural" scrolling)
-    QTest::newRow("down") << uint(Pointer::axis_vertical_scroll) << 1.0 << Qt::Vertical << QPoint{0, -12};
-    QTest::newRow("up") << uint(Pointer::axis_vertical_scroll) << -1.0 << Qt::Vertical << QPoint{0, 12};
-    QTest::newRow("left") << uint(Pointer::axis_horizontal_scroll) << 1.0 << Qt::Horizontal << QPoint{-12, 0};
-    QTest::newRow("right") << uint(Pointer::axis_horizontal_scroll) << -1.0 << Qt::Horizontal << QPoint{12, 0};
-    QTest::newRow("up big") << uint(Pointer::axis_vertical_scroll) << -10.0 << Qt::Vertical << QPoint{0, 120};
+    QTest::newRow("down") << uint(Pointer::axis_vertical_scroll) << 1.0 << QPoint{0, -12};
+    QTest::newRow("up") << uint(Pointer::axis_vertical_scroll) << -1.0 << QPoint{0, 12};
+    QTest::newRow("left") << uint(Pointer::axis_horizontal_scroll) << 1.0 << QPoint{-12, 0};
+    QTest::newRow("right") << uint(Pointer::axis_horizontal_scroll) << -1.0 << QPoint{12, 0};
+    QTest::newRow("up big") << uint(Pointer::axis_vertical_scroll) << -10.0 << QPoint{0, 120};
 }
 
 void tst_seatv5::simpleAxis()
 {
     QFETCH(uint, axis);
     QFETCH(qreal, value);
-    QFETCH(Qt::Orientation, orientation);
     QFETCH(QPoint, angleDelta);
 
     WheelWindow window;
@@ -220,7 +208,6 @@ void tst_seatv5::simpleAxis()
         // There has been no information about what created the event.
         // Documentation says not synthesized is appropriate in such cases
         QCOMPARE(e.source, Qt::MouseEventNotSynthesized);
-        QCOMPARE(e.orientation, orientation);
         QCOMPARE(e.angleDelta, angleDelta);
     }
 
@@ -263,7 +250,7 @@ void tst_seatv5::fingerScroll()
     {
         auto e = window.m_events.takeFirst();
         QCOMPARE(e.phase, Qt::ScrollUpdate);
-        QCOMPARE(e.orientation, Qt::Vertical);
+        QVERIFY(qAbs(e.angleDelta.x()) <= qAbs(e.angleDelta.y())); // Vertical scroll
 //        QCOMPARE(e.angleDelta, angleDelta); // TODO: what should this be?
         QCOMPARE(e.pixelDelta, QPoint(0, 10));
         QCOMPARE(e.source, Qt::MouseEventSynthesizedBySystem); // A finger is not a wheel
@@ -281,7 +268,7 @@ void tst_seatv5::fingerScroll()
     {
         auto e = window.m_events.takeFirst();
         QCOMPARE(e.phase, Qt::ScrollUpdate);
-        QCOMPARE(e.orientation, Qt::Horizontal);
+        QVERIFY(qAbs(e.angleDelta.x()) > qAbs(e.angleDelta.y())); // Horizontal scroll
         QCOMPARE(e.pixelDelta, QPoint(10, 0));
         QCOMPARE(e.source, Qt::MouseEventSynthesizedBySystem); // A finger is not a wheel
     }
@@ -373,7 +360,7 @@ void tst_seatv5::wheelDiscreteScroll()
     {
         auto e = window.m_events.takeFirst();
         QCOMPARE(e.phase, Qt::NoScrollPhase);
-        QCOMPARE(e.orientation, Qt::Vertical);
+        QVERIFY(qAbs(e.angleDelta.x()) <= qAbs(e.angleDelta.y())); // Vertical scroll
         // According to the docs the angle delta is in eights of a degree and most mice have
         // 1 click = 15 degrees. The angle delta should therefore be:
         // 15 degrees / (1/8 eights per degrees) = 120 eights of degrees.
@@ -381,6 +368,255 @@ void tst_seatv5::wheelDiscreteScroll()
         // Click scrolls are not continuous and should not have a pixel delta
         QCOMPARE(e.pixelDelta, QPoint(0, 0));
     }
+}
+
+void tst_seatv5::createsTouch()
+{
+    QCOMPOSITOR_TRY_COMPARE(touch()->resourceMap().size(), 1);
+    QCOMPOSITOR_TRY_COMPARE(touch()->resourceMap().first()->version(), 5);
+}
+
+class TouchWindow : public QRasterWindow {
+public:
+    TouchWindow()
+    {
+        resize(64, 64);
+        show();
+    }
+    void touchEvent(QTouchEvent *event) override
+    {
+        QRasterWindow::touchEvent(event);
+        m_events.append(Event{event});
+    }
+    struct Event // Because I didn't find a convenient way to copy it entirely
+    {
+        explicit Event() = default;
+        explicit Event(const QTouchEvent *event)
+            : type(event->type())
+            , touchPointStates(event->touchPointStates())
+            , touchPoints(event->touchPoints())
+        {
+        }
+        const QEvent::Type type{};
+        const Qt::TouchPointStates touchPointStates{};
+        const QList<QTouchEvent::TouchPoint> touchPoints;
+    };
+    QVector<Event> m_events;
+};
+
+void tst_seatv5::singleTap()
+{
+    TouchWindow window;
+    QCOMPOSITOR_TRY_VERIFY(xdgSurface() && xdgSurface()->m_committedConfigureSerial);
+
+    exec([=] {
+        auto *t = touch();
+        auto *c = client();
+        t->sendDown(xdgToplevel()->surface(), {32, 32}, 1);
+        t->sendFrame(c);
+        t->sendUp(c, 1);
+        t->sendFrame(c);
+    });
+
+    QTRY_VERIFY(!window.m_events.empty());
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchBegin);
+        QCOMPARE(e.touchPointStates, Qt::TouchPointState::TouchPointPressed);
+        QCOMPARE(e.touchPoints.length(), 1);
+        QCOMPARE(e.touchPoints.first().pos(), QPointF(32-window.frameMargins().left(), 32-window.frameMargins().top()));
+    }
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchEnd);
+        QCOMPARE(e.touchPointStates, Qt::TouchPointState::TouchPointReleased);
+        QCOMPARE(e.touchPoints.length(), 1);
+        QCOMPARE(e.touchPoints.first().pos(), QPointF(32-window.frameMargins().left(), 32-window.frameMargins().top()));
+    }
+}
+
+void tst_seatv5::singleTapFloat()
+{
+    TouchWindow window;
+    QCOMPOSITOR_TRY_VERIFY(xdgSurface() && xdgSurface()->m_committedConfigureSerial);
+
+    exec([=] {
+        auto *t = touch();
+        auto *c = client();
+        t->sendDown(xdgToplevel()->surface(), {32.75, 32.25}, 1);
+        t->sendFrame(c);
+        t->sendUp(c, 1);
+        t->sendFrame(c);
+    });
+
+    QTRY_VERIFY(!window.m_events.empty());
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchBegin);
+        QCOMPARE(e.touchPointStates, Qt::TouchPointState::TouchPointPressed);
+        QCOMPARE(e.touchPoints.length(), 1);
+        QCOMPARE(e.touchPoints.first().pos(), QPointF(32.75-window.frameMargins().left(), 32.25-window.frameMargins().top()));
+    }
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchEnd);
+        QCOMPARE(e.touchPointStates, Qt::TouchPointState::TouchPointReleased);
+        QCOMPARE(e.touchPoints.length(), 1);
+        QCOMPARE(e.touchPoints.first().pos(), QPointF(32.75-window.frameMargins().left(), 32.25-window.frameMargins().top()));
+    }
+}
+
+void tst_seatv5::multiTouch()
+{
+    TouchWindow window;
+    QCOMPOSITOR_TRY_VERIFY(xdgSurface() && xdgSurface()->m_committedConfigureSerial);
+
+    exec([=] {
+        auto *t = touch();
+        auto *c = client();
+
+        t->sendDown(xdgToplevel()->surface(), {32, 32}, 0);
+        t->sendDown(xdgToplevel()->surface(), {48, 48}, 1);
+        t->sendFrame(c);
+
+        // Compositor event order should not change the order of the QTouchEvent::touchPoints()
+        // See QTBUG-77014
+        t->sendMotion(c, {49, 48}, 1);
+        t->sendMotion(c, {33, 32}, 0);
+        t->sendFrame(c);
+
+        t->sendUp(c, 0);
+        t->sendFrame(c);
+
+        t->sendUp(c, 1);
+        t->sendFrame(c);
+    });
+
+    QTRY_VERIFY(!window.m_events.empty());
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchBegin);
+        QCOMPARE(e.touchPointStates, Qt::TouchPointState::TouchPointPressed);
+        QCOMPARE(e.touchPoints.length(), 2);
+
+        QCOMPARE(e.touchPoints[0].state(), Qt::TouchPointState::TouchPointPressed);
+        QCOMPARE(e.touchPoints[0].pos(), QPointF(32-window.frameMargins().left(), 32-window.frameMargins().top()));
+
+        QCOMPARE(e.touchPoints[1].state(), Qt::TouchPointState::TouchPointPressed);
+        QCOMPARE(e.touchPoints[1].pos(), QPointF(48-window.frameMargins().left(), 48-window.frameMargins().top()));
+    }
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchUpdate);
+        QCOMPARE(e.touchPoints.length(), 2);
+
+        QCOMPARE(e.touchPoints[0].state(), Qt::TouchPointState::TouchPointMoved);
+        QCOMPARE(e.touchPoints[0].pos(), QPointF(33-window.frameMargins().left(), 32-window.frameMargins().top()));
+
+        QCOMPARE(e.touchPoints[1].state(), Qt::TouchPointState::TouchPointMoved);
+        QCOMPARE(e.touchPoints[1].pos(), QPointF(49-window.frameMargins().left(), 48-window.frameMargins().top()));
+    }
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchUpdate);
+        QCOMPARE(e.touchPointStates, Qt::TouchPointState::TouchPointReleased | Qt::TouchPointState::TouchPointStationary);
+        QCOMPARE(e.touchPoints.length(), 2);
+
+        QCOMPARE(e.touchPoints[0].state(), Qt::TouchPointState::TouchPointReleased);
+        QCOMPARE(e.touchPoints[0].pos(), QPointF(33-window.frameMargins().left(), 32-window.frameMargins().top()));
+
+        QCOMPARE(e.touchPoints[1].state(), Qt::TouchPointState::TouchPointStationary);
+        QCOMPARE(e.touchPoints[1].pos(), QPointF(49-window.frameMargins().left(), 48-window.frameMargins().top()));
+    }
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchEnd);
+        QCOMPARE(e.touchPointStates, Qt::TouchPointState::TouchPointReleased);
+        QCOMPARE(e.touchPoints.length(), 1);
+        QCOMPARE(e.touchPoints[0].state(), Qt::TouchPointState::TouchPointReleased);
+        QCOMPARE(e.touchPoints[0].pos(), QPointF(49-window.frameMargins().left(), 48-window.frameMargins().top()));
+    }
+}
+
+void tst_seatv5::multiTouchUpAndMotionFrame()
+{
+    TouchWindow window;
+    QCOMPOSITOR_TRY_VERIFY(xdgSurface() && xdgSurface()->m_committedConfigureSerial);
+
+    exec([=] {
+        auto *t = touch();
+        auto *c = client();
+
+        t->sendDown(xdgToplevel()->surface(), {32, 32}, 0);
+        t->sendDown(xdgToplevel()->surface(), {48, 48}, 1);
+        t->sendFrame(c);
+
+        // Sending an up event after a frame event, before any motion or down events used to
+        // unnecessarily trigger a workaround for a bug in an old version of Weston. The workaround
+        // would prematurely insert a fake frame event splitting the touch event up into two events.
+        // However, this should only be needed on the up event for the very last touch point. So in
+        // this test we verify that it doesn't unncecessarily break up the events.
+        t->sendUp(c, 0);
+        t->sendMotion(c, {49, 48}, 1);
+        t->sendFrame(c);
+
+        t->sendUp(c, 1);
+        t->sendFrame(c);
+    });
+
+    QTRY_VERIFY(!window.m_events.empty());
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchBegin);
+        QCOMPARE(e.touchPoints[0].state(), Qt::TouchPointState::TouchPointPressed);
+        QCOMPARE(e.touchPoints[1].state(), Qt::TouchPointState::TouchPointPressed);
+    }
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchUpdate);
+        QCOMPARE(e.touchPoints.length(), 2);
+        QCOMPARE(e.touchPoints[0].state(), Qt::TouchPointState::TouchPointReleased);
+        QCOMPARE(e.touchPoints[1].state(), Qt::TouchPointState::TouchPointMoved);
+    }
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchEnd);
+        QCOMPARE(e.touchPoints.length(), 1);
+        QCOMPARE(e.touchPoints[0].state(), Qt::TouchPointState::TouchPointReleased);
+    }
+    QVERIFY(window.m_events.empty());
+}
+
+void tst_seatv5::tapAndMoveInSameFrame()
+{
+    TouchWindow window;
+    QCOMPOSITOR_TRY_VERIFY(xdgSurface() && xdgSurface()->m_committedConfigureSerial);
+
+    exec([=] {
+        auto *t = touch();
+        auto *c = client();
+
+        t->sendDown(xdgToplevel()->surface(), {32, 32}, 0);
+        t->sendMotion(c, {33, 33}, 0);
+        t->sendFrame(c);
+
+        // Don't leave touch in a weird state
+        t->sendUp(c, 0);
+        t->sendFrame(c);
+    });
+
+    QTRY_VERIFY(!window.m_events.empty());
+    {
+        auto e = window.m_events.takeFirst();
+        QCOMPARE(e.type, QEvent::TouchBegin);
+        QCOMPARE(e.touchPoints.size(), 1);
+        QCOMPARE(e.touchPoints[0].state(), Qt::TouchPointState::TouchPointPressed);
+        // Position isn't that important, we just want to make sure we actually get the pressed event
+    }
+
+    // Make sure we eventually release
+    QTRY_VERIFY(!window.m_events.empty());
+    QTRY_COMPARE(window.m_events.last().touchPoints.first().state(), Qt::TouchPointState::TouchPointReleased);
 }
 
 QCOMPOSITOR_TEST_MAIN(tst_seatv5)
